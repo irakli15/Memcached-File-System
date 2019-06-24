@@ -70,7 +70,33 @@ void send_all(void* buf, uint_size_t size){
   returns the data_length, not total received length.
  */
 int recv_all(void* buf){
-  return 0;
+  char recvd[ETHERNET_MTU];
+  memset(recvd, 0, ETHERNET_MTU);
+  int recvd_size = recv(sock, recvd, ETHERNET_MTU, 0);
+
+  if(recvd_size <= 0){
+    perror("receive error\n");
+    exit(EXIT_FAILURE);
+  }
+  if(strncmp(recvd, "END", 3) == 0){
+    printf("not found\n");
+    return -1;
+  }
+
+  assert(strncmp(recvd, "VALUE", 5) == 0);
+  int index = 0;
+  for(int i = 0; i < 3; index++){
+    if(recvd[index] == ' ')
+      i++;
+  }
+  uint_size_t data_length = atoi(recvd + index);
+  while(recvd[index-2] != '\r' && recvd[index-1] != '\n' && index < recvd_size)
+    index++;
+  while(strncmp(recvd + index + data_length + 2, "END", 3) != 0){
+    recvd_size += recv(sock, recvd + recvd_size, ETHERNET_MTU, 0);
+  }
+  memcpy(buf, recvd + index, data_length);
+  return data_length;
 }
 
 void send_block(sector_t sector, void* buf){
@@ -126,51 +152,20 @@ int get_entry(sector_t sector, char* buf, uint_size_t size){
   int stat_len = sprintf(get_statement, "get %u\r\n", sector);
   // send_block()
   send_all(get_statement, stat_len);
-  char recvd[ETHERNET_MTU];
-  memset(recvd, 0, ETHERNET_MTU);
-  // int recvd_size = recv(sock, recvd, ETHERNET_MTU, 0);
-
-  // if(recvd_size <= 0){
-  //   perror("received invalid response\n");
-  //   exit(EXIT_FAILURE);
-  // }
-  // if(strncmp(recvd, "END", 3) == 0){
-  //   printf("not found\n");
-  //   return -1;
-  // }
-
-  // assert(strncmp(recvd, "VALUE", 5) == 0);
-  // int index = 0;
-  // for(int i = 0; i < 3; index++){
-  //   if(recvd[index] == ' ')
-  //     i++;
-  // }
-  // uint_size_t data_length = atoi(recvd + index);
-  // while(recvd[index-2] != '\r' && recvd[index-1] != '\n' && index < recvd_size)
-  //   index++;
-  // memcpy(buf, recvd + index, data_length);
-  // assert(strncmp(recvd + index + data_length + 2, "END", 3) == 0);
-  // return recvd_size;
+  recv_all(buf);
 }
 
 
 
-int main(){
+// int main(){
 
-  // char* stats = "stats\n";
-  // send(sock, stats, strlen(stats),0);
-  // char buff[1024];
-  // recv(sock, buff, 1024, 0);
-  // printf("%s\n", buff);
-  // close(sock);
-  // printf("%d\n", sizeof(unsigned long));
-  init_connection();
-  char* test = "hello";
-  add_entry(0, test, strlen(test));
-  char* buf = malloc(ETHERNET_MTU);
-  get_entry(0, buf, ETHERNET_MTU);
-  // printf)
-  flush_all();
-  return 0;
-
-}
+//   init_connection();
+//   char* test = "hello";
+//   add_entry(0, test, strlen(test));
+//   char* buf = malloc(ETHERNET_MTU);
+//   get_entry(0, buf, ETHERNET_MTU);
+//   printf("%s\n", buf);
+//   // printf)
+//   flush_all();
+//   return 0;
+// }
