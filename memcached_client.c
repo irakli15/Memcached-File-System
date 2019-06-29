@@ -153,6 +153,8 @@ int get_entry(sector_t sector, char* buf, uint_size_t size){
   // send_block()
   send_all(get_statement, stat_len);
   recv_all(buf);
+
+  ///check end
 }
 
 
@@ -160,12 +162,15 @@ int get_entry(sector_t sector, char* buf, uint_size_t size){
 // int main(){
 
 //   init_connection();
-//   char* test = "hello";
-//   add_entry(0, test, strlen(test));
-//   char* buf = malloc(ETHERNET_MTU);
-//   get_entry(0, buf, ETHERNET_MTU);
-//   printf("%s\n", buf);
-//   // printf)
-//   flush_all();
+//   struct disk_inode inode;
+//   inode.inumber = 5;
+
+//   assert(sizeof(struct disk_inode) == SECTOR_SIZE);
+//   add_entry(0, (void*)&inode, sizeof(struct disk_inode));
+//   struct disk_inode buf;// = malloc(sizeof(struct disk_inode));
+//   get_entry(0, (void*)&buf, sizeof(struct disk_inode));
+//   printf("%lld\n", buf.inumber);
+//   // // printf)
+//   // flush_all();
 //   return 0;
 // }
