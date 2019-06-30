@@ -7,23 +7,30 @@ FLAGS=`pkg-config fuse3 --cflags --libs`
 # მისი სინტაქსი ასეთია:
 # სახელი : მოდულების სახელების რაზეც დამოკიდებულია
 # 		შესასრულებელი ბრძანება
-all : main.o memcached_client.o free-map.o
-	$(CC) -o cachefs main.o memcached_client.o free-map.o $(FLAGS)
+all : main.o memcached_client.o free-map.o inode.o list.o
+	$(CC) -o cachefs main.o memcached_client.o free-map.o inode.o list.o $(FLAGS)
 
 # რიგითი მოდულის კონფიგურაცია:
 # სახელი : დამოკიდებულებების სია (აქ შეიძლება იყოს .h ჰედერ ფაილებიც)
 # 	შესასრულებელი ბრძანება
 main.o : main.c 
 	$(CC) -c main.c $(FLAGS)
+	
 memcached_client.o : memcached_client.c memcached_client.h
 	$(CC) -c memcached_client.c
 
 free-map.o : free-map.c free-map.h
 	$(CC) -c free-map.c
 
+inode.o : inode.c inode.h
+	$(CC) -c inode.c
+
+list.o : list.c list.h
+	$(CC) -c list.c
+
 # დაგენერირებული არტიფაქტების წაშლა
 clean :
-	rm cachefs main.o memcached_client.o free-map.o
+	rm cachefs main.o memcached_client.o free-map.o inode.o list.o
 
 
 # თუ პროექტს დაამატებთ .c ფაილებს, მაშინ აქ უნდა დაამატოთ ახალი მოდული, main.o-ს მსგავსად. ასევე ახალი_ფაილი.o უნდა დაუმაროთ all-ს, და clean-ს. მაგალითად:

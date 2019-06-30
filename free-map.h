@@ -9,7 +9,8 @@
 //and populate bitmap
 void init_free_map();
 
-sector_t alloc_sector();
-void free_sector(sector_t sector);
+inumber_t alloc_inumber();
+int alloc_blocks(disk_inode* inode, uint_size_t count);
+void free_block(inumber_t block);
 
 #endif

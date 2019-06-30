@@ -99,19 +99,22 @@ int recv_all(void* buf){
   return data_length;
 }
 
-void send_block(sector_t sector, void* buf){
-  add_entry(sector, buf, SECTOR_SIZE);
+int add_block(inumber_t block, void* buf){
+  return add_entry(block, buf, BLOCK_SIZE);
 }
 
-void recv_block(sector_t sector, void* buf){
-  get_entry(sector, buf, SECTOR_SIZE);
+int get_block(inumber_t block, void* buf){
+  int status = get_entry(block, buf, BLOCK_SIZE);
+  if(status == -1 || status == 0)
+    return -1;
+  return 0;
 }
 
-int add_entry(sector_t sector, void* buf, uint_size_t size){
+int add_entry(inumber_t block, void* buf, uint_size_t size){
   char add_statement[MSG_MAX_SIZE];
   memset(add_statement, 0, MSG_MAX_SIZE);
 
-  int stat_len = sprintf(add_statement, "add %u 0 0 %u\r\n", sector, size);
+  int stat_len = sprintf(add_statement, "add %llu 0 0 %u\r\n", block, size);
   send_all(add_statement, stat_len);
 
   char to_send[size + 2];
@@ -146,13 +149,13 @@ int flush_all(){
   }
 }
 
-int get_entry(sector_t sector, char* buf, uint_size_t size){
+int get_entry(inumber_t block, char* buf, uint_size_t size){
   char get_statement[MSG_MAX_SIZE];
   memset(get_statement, 0, MSG_MAX_SIZE);
-  int stat_len = sprintf(get_statement, "get %u\r\n", sector);
+  int stat_len = sprintf(get_statement, "get %llu\r\n", block);
   // send_block()
   send_all(get_statement, stat_len);
-  recv_all(buf);
+  return recv_all(buf);
 
   ///check end
 }
@@ -165,7 +168,7 @@ int get_entry(sector_t sector, char* buf, uint_size_t size){
 //   struct disk_inode inode;
 //   inode.inumber = 5;
 
-//   assert(sizeof(struct disk_inode) == SECTOR_SIZE);
+//   assert(sizeof(struct disk_inode) == BLOCK_SIZE);
 //   add_entry(0, (void*)&inode, sizeof(struct disk_inode));
 //   struct disk_inode buf;// = malloc(sizeof(struct disk_inode));
 //   get_entry(0, (void*)&buf, sizeof(struct disk_inode));
