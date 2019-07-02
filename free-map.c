@@ -1,6 +1,7 @@
 #include "free-map.h"
 #include <string.h>
 #include <stdio.h>
+// #include "inode.h"
 inumber_t succesive_inode_inumber;
 
 char empty_buf[BLOCK_SIZE];
@@ -29,28 +30,26 @@ inumber_t alloc_inumber(){
 
 // must call this before updating length in inode
 // returns index where the new blocks start
-int alloc_blocks(disk_inode* inode, uint_size_t count){
+int alloc_blocks(disk_inode* d_inode, size_t count){
     //first 4 bytes - inode number, second 4 bytes block number
-
     block_t start_block;
 
-    if(inode->length == 0)
+    if(d_inode->length == 0)
         start_block = 0;
     else
-        start_block = bytes_to_nblock(inode->length) + 1;
-        
-    inumber_t index = (inode->inumber << 4) | start_block;
+        start_block = bytes_to_nblock(d_inode->length);
+    // printf("start %lu\n", start_block);
     //next 2 lines for the indice to start from 0
-    uint_size_t i = inode->length == 0 ? 0 : 1;
+    size_t i = 0;
     count += i;
     int status = 0;
     for(; i < count; i++){
-        status = add_block(index + i, empty_buf);
+        // printf("%llu\n", block_to_inumber(d_inode->inumber, i + start_block));
+        status = add_block(block_to_inumber(d_inode->inumber, i + start_block), empty_buf);
         if(status != 0)
             return -1;
-        // printf("sent %llu\n", index+i);
     }
-    return start_block;
+    return 0;
 }
 
 void free_block(inumber_t block){

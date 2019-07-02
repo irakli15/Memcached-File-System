@@ -10,7 +10,7 @@
 void init_free_map();
 
 inumber_t alloc_inumber();
-int alloc_blocks(disk_inode* inode, uint_size_t count);
+int alloc_blocks(disk_inode* d_inode, size_t count);
 void free_block(inumber_t block);
 
 #endif

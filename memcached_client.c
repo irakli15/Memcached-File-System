@@ -49,7 +49,7 @@ void close_connection(){
   close(sock);
 }
 
-void send_all(void* buf, uint_size_t size){
+void send_all(void* buf, size_t size){
   int total_sent = 0;
   int sent = 0;
 
@@ -89,7 +89,7 @@ int recv_all(void* buf){
     if(recvd[index] == ' ')
       i++;
   }
-  uint_size_t data_length = atoi(recvd + index);
+  size_t data_length = atoi(recvd + index);
   while(recvd[index-2] != '\r' && recvd[index-1] != '\n' && index < recvd_size)
     index++;
   while(strncmp(recvd + index + data_length + 2, "END", 3) != 0){
@@ -110,11 +110,14 @@ int get_block(inumber_t block, void* buf){
   return 0;
 }
 
-int add_entry(inumber_t block, void* buf, uint_size_t size){
+int update_block(inumber_t block, void* buf){
+  return update_entry(block, buf, BLOCK_SIZE);
+}
+
+int send_entry(inumber_t block, void* buf, size_t size, char* operation){
   char add_statement[MSG_MAX_SIZE];
   memset(add_statement, 0, MSG_MAX_SIZE);
-
-  int stat_len = sprintf(add_statement, "add %llu 0 0 %u\r\n", block, size);
+  int stat_len = sprintf(add_statement, "%s %llu 0 0 %lu\r\n", operation, block, size);
   send_all(add_statement, stat_len);
 
   char to_send[size + 2];
@@ -126,7 +129,7 @@ int add_entry(inumber_t block, void* buf, uint_size_t size){
   char recv_buf [MSG_MAX_SIZE];
   memset(recv_buf, 0, MSG_MAX_SIZE);
   int recv_length = recv(sock, recv_buf, MSG_MAX_SIZE, 0);
-  
+
   if (strcmp(recv_buf, "STORED\r\n") == 0){
     return 0;
   } else {
@@ -134,6 +137,25 @@ int add_entry(inumber_t block, void* buf, uint_size_t size){
     return -1;
   }
 }
+
+int add_entry(inumber_t block, void* buf, size_t size){
+  return send_entry(block, buf, size, "add");
+}
+
+
+int get_entry(inumber_t block, char* buf, size_t size){
+  char get_statement[MSG_MAX_SIZE];
+  memset(get_statement, 0, MSG_MAX_SIZE);
+  int stat_len = sprintf(get_statement, "get %llu\r\n", block);
+  // send_block()
+  send_all(get_statement, stat_len);
+  return recv_all(buf);
+}
+
+int update_entry(inumber_t block, void* buf, size_t size){
+  return send_entry(block, buf, size, "set");
+}
+
 
 int flush_all(){
   char* flush_statement = "flush_all\r\n";
@@ -149,31 +171,30 @@ int flush_all(){
   }
 }
 
-int get_entry(inumber_t block, char* buf, uint_size_t size){
-  char get_statement[MSG_MAX_SIZE];
-  memset(get_statement, 0, MSG_MAX_SIZE);
-  int stat_len = sprintf(get_statement, "get %llu\r\n", block);
-  // send_block()
-  send_all(get_statement, stat_len);
-  return recv_all(buf);
-
-  ///check end
-}
-
-
-
 // int main(){
 
 //   init_connection();
 //   struct disk_inode inode;
 //   inode.inumber = 5;
-
+//   inode.length = 4;
 //   assert(sizeof(struct disk_inode) == BLOCK_SIZE);
-//   add_entry(0, (void*)&inode, sizeof(struct disk_inode));
+//   add_entry(inode.inumber, (void*)&inode, sizeof(disk_inode));
 //   struct disk_inode buf;// = malloc(sizeof(struct disk_inode));
-//   get_entry(0, (void*)&buf, sizeof(struct disk_inode));
+//   get_entry(inode.inumber, (void*)&buf, sizeof(disk_inode));
 //   printf("%lld\n", buf.inumber);
+//   printf("%u\n", buf.length);
+  
+//   inode.length = 1012;
+
+
+//   struct disk_inode buf2;
+//   update_entry(inode.inumber, (void*)&inode, sizeof(disk_inode));
+//   get_entry(inode.inumber, (void*)&buf2, sizeof(disk_inode));
+  
+
+//   printf("%lld\n", buf2.inumber);
+//   printf("%u\n", buf2.length);
 //   // // printf)
-//   // flush_all();
+//   flush_all();
 //   return 0;
 // }
