@@ -35,9 +35,9 @@ int alloc_blocks(disk_inode* d_inode, size_t count){
     block_t start_block;
 
     if(d_inode->length == 0)
-        start_block = 0;
+        start_block = 1;
     else
-        start_block = bytes_to_nblock(d_inode->length);
+        start_block = bytes_to_nblock(d_inode->length) + 1;
     // printf("start %lu\n", start_block);
     //next 2 lines for the indice to start from 0
     size_t i = 0;

@@ -5,7 +5,7 @@
 #include <assert.h>
 
 // #define DEBUG_READ
-// #define DEBUG_WRITE
+ #define DEBUG_WRITE
 
 struct list opened_inodes;
 
@@ -27,11 +27,11 @@ size_t bytes_to_nblock(size_t bytes){
 }
 
 block_t bytes_to_index(size_t bytes){
-    return bytes/BLOCK_SIZE;
+    return bytes/BLOCK_SIZE + 1;
 }
 
 inumber_t block_to_inumber(inumber_t inumber, block_t block){
-    return (inumber << 4) | block;
+    return inumber | block;
 }
 
 
@@ -269,7 +269,7 @@ size_t ilen(inode_t* inode){
 void single_write(){
     char buff[1024];
     int debug = 0;
-    inumber_t inumber = 5;
+    inumber_t inumber = 5 << 4;
     inode_create(inumber, 1024, 0);
     inode_t* inode = inode_open(inumber);
     if(inode == NULL){
@@ -309,7 +309,7 @@ void single_write(){
 void write_stretch_and_big_seek(){
     int debug=0;
     char buff[1024];
-    inumber_t inumber = 5;
+    inumber_t inumber = 5 << 4;
     inode_create(inumber, 1024, 0);
     inode_t* inode = inode_open(inumber);
     if(inode == NULL){

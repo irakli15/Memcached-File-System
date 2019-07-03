@@ -14,6 +14,22 @@
 typedef unsigned long long inumber_t;
 typedef size_t block_t;
 
+/*
+   * assuming neither block or inode number
+   * will go over 4 bytes.
+   * block count of 4 bytes translates into 
+   * file size well above 1GB.
+   * precisely: 2^32 kb, which is 2^12 GB
+   * 
+   * max possible empty inode count
+   * in 2gb with 1kb of block size is:
+   * 2048*1024*1024/1024 = 2048*1024 = 2^21
+   * 
+   * max inode count with 4byte inumber is:
+   * 2^32
+   * 
+*/ 
+
 struct disk_inode{
   inumber_t inumber; //8
   size_t length; //8
