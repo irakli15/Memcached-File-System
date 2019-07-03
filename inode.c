@@ -5,7 +5,7 @@
 #include <assert.h>
 
 // #define DEBUG_READ
- #define DEBUG_WRITE
+//  #define DEBUG_WRITE
 
 struct list opened_inodes;
 
@@ -258,6 +258,17 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
   return 0;
 }
 
+void inode_delete(inode_t* inode){
+    inumber_t max_index = block_to_inumber(inode->inumber, bytes_to_index(ilen(inode)));
+    int status = 0;
+    for(inumber_t i = inode->inumber; i <= max_index; i++){
+        status = remove_block(i);
+        if(status != 0){
+            printf("error while removing %llu block\n", i);
+        }
+    }
+}
+
 size_t ilen(inode_t* inode){
     return inode->d_inode.length;
 }
@@ -355,12 +366,15 @@ void write_stretch_and_big_seek(){
         printf("single_write_big_seek failed\n");
     }
 
+    inode_delete(inode);
+
     flush_all();
 }
 
 int main(){
     init_connection();
     init_inode();
+    flush_all();
     single_write();
     write_stretch_and_big_seek();    
 

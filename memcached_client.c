@@ -114,11 +114,15 @@ int update_block(inumber_t block, void* buf){
   return update_entry(block, buf, BLOCK_SIZE);
 }
 
+int remove_block(inumber_t block){
+  return remove_entry(block);
+}
+
 int send_entry(inumber_t block, void* buf, size_t size, char* operation){
-  char add_statement[MSG_MAX_SIZE];
-  memset(add_statement, 0, MSG_MAX_SIZE);
-  int stat_len = sprintf(add_statement, "%s %llu 0 0 %lu\r\n", operation, block, size);
-  send_all(add_statement, stat_len);
+  char statement[MSG_MAX_SIZE];
+  memset(statement, 0, MSG_MAX_SIZE);
+  int stat_len = sprintf(statement, "%s %llu 0 0 %lu\r\n", operation, block, size);
+  send_all(statement, stat_len);
 
   char to_send[size + 2];
   memcpy(to_send, buf, size + 2);
@@ -154,6 +158,21 @@ int get_entry(inumber_t block, char* buf, size_t size){
 
 int update_entry(inumber_t block, void* buf, size_t size){
   return send_entry(block, buf, size, "set");
+}
+
+int remove_entry(inumber_t block){
+  char statement[MSG_MAX_SIZE];
+  memset(statement, 0, MSG_MAX_SIZE);
+  int stat_len = sprintf(statement, "delete %llu\r\n", block);
+  send_all(statement, stat_len);
+
+  char recv_buf [MSG_MAX_SIZE];
+  memset(recv_buf, 0, MSG_MAX_SIZE);
+  int recv_length = recv(sock, recv_buf, MSG_MAX_SIZE, 0);
+  if(strcmp(recv_buf, "DELETED\r\n") == 0){
+    return 0;
+  }
+  return -1;
 }
 
 
