@@ -51,7 +51,7 @@ int inode_create(inumber_t inumber, size_t size, int mode){
         return status;
     }
 
-    return inumber;
+    return 0;
 }
 
 inode_t* lookup_inode(inumber_t inumber){

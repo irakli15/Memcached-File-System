@@ -143,7 +143,8 @@ int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* d
             printf("error reading dir w/inumber:%llu\n", dir->inode->inumber);
             return -1;
         }
-        if(strcmp(entry.name, file_name) == 0){
+        
+        if(entry.in_use == 1 && strcmp(entry.name, file_name) == 0){
             if(offset != NULL)
                 *offset = pos;
             if(dir_entry != NULL)
@@ -160,8 +161,11 @@ int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* d
 int dir_lookup(dir_t* dir, char* file_name, inumber_t* inumber){
     dir_entry_t dir_entry;
     int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
+
     if (status == 0){
-        *inumber = dir_entry.inumber;
+        if(inumber != NULL){
+            *inumber = dir_entry.inumber;
+        }
         return 0;
     }
     return -1;
@@ -219,18 +223,21 @@ void readdir_full(dir_t* dir){
 }
 
 void basic_dir_create_read_test(){
- inumber_t inumber = alloc_inumber();
-    int status = dir_create(2<<4,0);
+    flush_all();    
+    inumber_t inumber = alloc_inumber();
+    int status = dir_create(inumber,0);
     // printf("%d\n", 3<<4);
     printf("create status %d\n", status);
-    dir_t* dir = dir_open(inode_open(2<<4));
-    status = dir_add_entry(dir, "file1", 3<<4);//alloc_inumber());
+    dir_t* dir = dir_open(inode_open(inumber));
+    status = dir_add_entry(dir, "file1", alloc_inumber());
     printf("add file1 status %d\n", status);
-    status = dir_add_entry(dir, "file2", 4<<4);//alloc_inumber());
+    status = dir_add_entry(dir, "file2", alloc_inumber());
     printf("add file2 status %d\n", status);
-    status = dir_add_entry(dir, "file3", 5<<4);//alloc_inumber());
+    status = dir_add_entry(dir, "file3", alloc_inumber());
     printf("add file3 status %d\n", status);
 
+    status = dir_add_entry(dir, "file3", alloc_inumber());
+    printf("add file3 again status %d\n", status);
     readdir_full(dir);
 
 
@@ -238,12 +245,47 @@ void basic_dir_create_read_test(){
     printf("remove file2 status %d\n", status);
     dir_reset_seek(dir);
     readdir_full(dir);
-    status = dir_add_entry(dir, "file4", 6<<4);//alloc_inumber());
+    status = dir_add_entry(dir, "file4", alloc_inumber());
     printf("add file4 status %d\n", status);
 
+    dir_remove_entry(dir, "file1");
     dir_reset_seek(dir);
     readdir_full(dir);
 
+    dir_remove_entry(dir, "file3");
+    dir_reset_seek(dir);
+    readdir_full(dir);
+
+    dir_remove_entry(dir, "file4");
+    dir_reset_seek(dir);
+    readdir_full(dir);
+
+    status = dir_add_entry(dir, "file4", alloc_inumber());
+    printf("add file4 again status %d\n", status);
+}
+
+void add_entries(dir_t* dir, int count){
+    inumber_t inumber;
+    char file_name[10];
+    int status;
+    while(count > 0){
+        inumber = alloc_inumber();
+        printf("%d\n", 0xf & inumber);
+        // sprintf(file_name, "file%llu", );
+        status = dir_add_entry(dir, file_name, inumber);
+        assert(status == 0);
+        count--;
+    }
+}
+
+void dir_stress_test(){
+    flush_all();
+    inumber_t dir_inumber = alloc_inumber();
+    int status = dir_create(dir_inumber, 0);
+    dir_t* dir = dir_open(inode_open(dir_inumber));
+    assert(status == 0);
+    add_entries(dir, 5);
+    readdir_full(dir);
 }
 
 
@@ -251,6 +293,8 @@ int main(){
     init_connection();
     init_inode();
     init_free_map();
-    flush_all();
+    // flush_all();
+    basic_dir_create_read_test();
+    // dir_stress_test();
     return 0;
 }
