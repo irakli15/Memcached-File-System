@@ -45,7 +45,7 @@ void dir_close(dir_t* dir){
 
 
 int dir_create(inumber_t inumber, size_t entry_count){
-    return inode_create(inumber, bytes_to_nblock(entry_count*sizeof(dir_entry_t)), __S_IFDIR);
+    return inode_create(inumber, entry_count*sizeof(dir_entry_t), __S_IFDIR);
 }
 int dir_remove(dir_t* dir){
 
@@ -270,8 +270,7 @@ void add_entries(dir_t* dir, int count){
     int status;
     while(count > 0){
         inumber = alloc_inumber();
-        printf("%d\n", 0xf & inumber);
-        // sprintf(file_name, "file%llu", );
+        sprintf(file_name, "file%llu", inumber>>4 );
         status = dir_add_entry(dir, file_name, inumber);
         assert(status == 0);
         count--;
@@ -284,7 +283,7 @@ void dir_stress_test(){
     int status = dir_create(dir_inumber, 0);
     dir_t* dir = dir_open(inode_open(dir_inumber));
     assert(status == 0);
-    add_entries(dir, 5);
+    add_entries(dir, 5000/sizeof(dir_entry_t));
     readdir_full(dir);
 }
 
@@ -293,8 +292,16 @@ int main(){
     init_connection();
     init_inode();
     init_free_map();
-    // flush_all();
-    basic_dir_create_read_test();
+    flush_all();
+    // basic_dir_create_read_test();
     // dir_stress_test();
+    inumber_t dir_inumber = alloc_inumber();
+    int status = dir_create(dir_inumber, 2);
+    dir_t* dir = dir_open(inode_open(dir_inumber));
+    dir_add_entry(dir, "file", alloc_inumber());
+    dir_add_entry(dir, "file1", alloc_inumber());
+    dir_add_entry(dir, "file2", alloc_inumber());
+
+    printf("%lu\n", ilen(dir->inode));
     return 0;
 }
