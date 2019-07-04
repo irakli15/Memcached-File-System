@@ -7,8 +7,8 @@
 #define BLOCK_SIZE 1024
 #define INODE_PAD_SIZE 1004
 
-#define FREE_MAP_BLOCKx 0
-#define ROOT_DIR_BLOCK 1
+#define FREE_MAP_INUMBER 0
+#define ROOT_DIR_INUMBER 1 << 4
 
 
 typedef unsigned long long inumber_t;
