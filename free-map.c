@@ -25,11 +25,12 @@ void init_free_map(){
 }
 
 inumber_t alloc_inumber(){
+    inumber_t res = succesive_inode_inumber << 4;
     succesive_inode_inumber++;
+    return res;
 }
 
 // must call this before updating length in inode
-// returns index where the new blocks start
 int alloc_blocks(disk_inode* d_inode, size_t count){
     //first 4 bytes - inode number, second 4 bytes block number
     block_t start_block;

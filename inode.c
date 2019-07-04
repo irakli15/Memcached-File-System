@@ -9,7 +9,7 @@
 
 struct list opened_inodes;
 
-size_t ilen(inode_t* inode);
+
 
 void init_inode(){
     // check for inode structure in memcached
@@ -73,6 +73,7 @@ inode_t* inode_open(inumber_t inumber){
   }
 
   inode = malloc(sizeof(inode_t));
+  assert(inode != NULL);
   int status = get_block(inumber, &inode->d_inode);
   if(status == -1){
       printf("getting inumber:%llu block failed\n", inumber);
@@ -85,8 +86,7 @@ inode_t* inode_open(inumber_t inumber){
   return inode;
 }
 
-void inode_close(inumber_t inumber){
-    inode_t* inode = lookup_inode(inumber);
+void inode_close(inode_t* inode){
     if(inode == NULL)
         return;
 
@@ -97,10 +97,10 @@ void inode_close(inumber_t inumber){
     }
 }
 
-void grow_inode(inode_t* inode, size_t final_size){
-    size_t block_count = bytes_to_nblock( final_size- ilen(inode));
+int grow_inode(inode_t* inode, size_t final_size){
+    size_t block_count = bytes_to_nblock( final_size - ilen(inode));
     // exit(0);
-    alloc_blocks(&inode->d_inode, block_count);
+    return alloc_blocks(&inode->d_inode, block_count);
 }
 
 int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
@@ -142,13 +142,14 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
             printf("left size: %lu\n", size);
             printf("write_size: %lu\n", write_size);
         #endif
-        
-        if(offset + write_size >= ilen(inode)){
-            grow_inode(inode, offset + write_size);
+
+        // if(offset + write_size >= ilen(inode)){
+        if(bytes_to_nblock(offset + write_size) != bytes_to_nblock(ilen(inode))){
+            status = grow_inode(inode, offset + write_size);
             #ifdef DEBUG_WRITE
                 // printf("adding %lu blocks\n", block_count);
             #endif
-            if (status != 0){
+            if (status == -1){
                 printf("error while adding new block\n");
                 return -1;
             }
@@ -171,8 +172,8 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         memcpy(temp_buf + off_in_block, buf + written, write_size);
         update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
 
-
-        inode->d_inode.length += (write_size - ilen(inode) + offset );
+        if(offset + write_size > ilen(inode))
+            inode->d_inode.length += (write_size - ilen(inode) + offset);
         #ifdef DEBUG_WRITE
             printf("new size:%lu\n", ilen(inode));
             printf("\n");
@@ -258,7 +259,9 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
   return 0;
 }
 
-void inode_delete(inode_t* inode){
+int inode_delete(inode_t* inode){
+    if(inode->open_count > 1)
+        return -1;
     inumber_t max_index = block_to_inumber(inode->inumber, bytes_to_index(ilen(inode)));
     int status = 0;
     for(inumber_t i = inode->inumber; i <= max_index; i++){
@@ -267,6 +270,7 @@ void inode_delete(inode_t* inode){
             printf("error while removing %llu block\n", i);
         }
     }
+    return 0;
 }
 
 size_t ilen(inode_t* inode){
@@ -294,7 +298,7 @@ void single_write(){
     char* hello_buff = "hello";
     inode_write(inode, hello_buff, 1024, strlen(hello_buff));
 
-    inode_close(inumber);
+    inode_close(inode);
     inode = inode_open(inumber);
     if(debug)
     printf("inumber: %llu, length: %lu\n", inode->inumber, inode->d_inode.length);
@@ -334,7 +338,7 @@ void write_stretch_and_big_seek(){
     char* hello_buff = "hello";
     inode_write(inode, hello_buff, 1022, strlen(hello_buff));
 
-    inode_close(inumber);
+    inode_close(inode);
     inode = inode_open(inumber);
     if(debug)
     printf("inumber: %llu, length: %lu\n", inode->inumber, inode->d_inode.length);
@@ -371,14 +375,14 @@ void write_stretch_and_big_seek(){
     flush_all();
 }
 
-int main(){
-    init_connection();
-    init_inode();
-    flush_all();
-    single_write();
-    write_stretch_and_big_seek();    
+// int main(){
+//     init_connection();
+//     init_inode();
+//     flush_all();
+//     single_write();
+//     write_stretch_and_big_seek();    
 
     
-    return 0;
-}
+//     return 0;
+// }
 

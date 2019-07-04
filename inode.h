@@ -50,10 +50,11 @@ typedef struct inode inode_t;
 void init_inode();
 int inode_create(inumber_t inumber, size_t size, int mode);
 inode_t* inode_open(inumber_t inumber);
-void inode_close(inumber_t inumber);
+void inode_close(inode_t* inode);
 int inode_write(inode_t* inode, void* buf, size_t offset, size_t size);
 int inode_read(inode_t* inode, void* buf, size_t offset, size_t size);
-void inode_delete(inode_t* inode);
+int inode_delete(inode_t* inode);
+size_t ilen(inode_t* inode);
 
 size_t bytes_to_nblock(size_t bytes);
 block_t bytes_to_index(size_t bytes);
