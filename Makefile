@@ -2,13 +2,14 @@
 # ამ ოფციების გარეშე gcc ვერ მიაგნებს fuse3-ის ფაილებს
 CC=gcc
 FLAGS=`pkg-config fuse3 --cflags --libs`
+rebuild: clean all
 
 # default target რომელსაც make ასრულებს;
 # მისი სინტაქსი ასეთია:
 # სახელი : მოდულების სახელების რაზეც დამოკიდებულია
 # 		შესასრულებელი ბრძანება
 all : main.o memcached_client.o free-map.o inode.o list.o directory.o
-	$(CC) -o cachefs main.o memcached_client.o free-map.o inode.o list.o directory.o $(FLAGS)
+	$(CC) -o cachefs main.o memcached_client.o free-map.o inode.o list.o directory.o  $(FLAGS)
 
 # რიგითი მოდულის კონფიგურაცია:
 # სახელი : დამოკიდებულებების სია (აქ შეიძლება იყოს .h ჰედერ ფაილებიც)
@@ -33,7 +34,7 @@ directory.o : directory.c directory.h
 
 # დაგენერირებული არტიფაქტების წაშლა
 clean :
-	rm cachefs main.o memcached_client.o free-map.o inode.o list.o directory.o
+	rm -f cachefs main.o memcached_client.o free-map.o inode.o list.o directory.o
 
 
 # თუ პროექტს დაამატებთ .c ფაილებს, მაშინ აქ უნდა დაამატოთ ახალი მოდული, main.o-ს მსგავსად. ასევე ახალი_ფაილი.o უნდა დაუმაროთ all-ს, და clean-ს. მაგალითად:

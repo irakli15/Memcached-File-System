@@ -2,7 +2,7 @@
 #define _DIRECTORY_H
 
 #include "inode.h"
-#define NAME_MAX_LEN 20
+#define NAME_MAX_LEN 27
 
 typedef struct dir dir_t;
 typedef struct dir_entry dir_entry_t;

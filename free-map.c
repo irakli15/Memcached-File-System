@@ -25,7 +25,7 @@ void init_free_map(){
 }
 
 inumber_t alloc_inumber(){
-    inumber_t res = succesive_inode_inumber << 4;
+    inumber_t res = succesive_inode_inumber << 4*8;
     succesive_inode_inumber++;
     return res;
 }

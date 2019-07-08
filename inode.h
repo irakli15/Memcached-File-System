@@ -5,10 +5,10 @@
 #include <stdlib.h>
 
 #define BLOCK_SIZE 1024
-#define INODE_PAD_SIZE 1004
+#define INODE_PAD_SIZE BLOCK_SIZE - 20
 
 #define FREE_MAP_INUMBER 0
-#define ROOT_DIR_INUMBER 1 << 4
+#define ROOT_DIR_INUMBER 4294967296 // 1 << 4*8
 
 
 typedef unsigned long long inumber_t;

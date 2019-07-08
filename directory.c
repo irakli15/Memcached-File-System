@@ -298,12 +298,14 @@ void basic_dir_create_read_test(){
     printf("add file4 again status %d\n", status);
 }
 
+
 void add_entries(dir_t* dir, int count){
     inumber_t inumber;
     char file_name[10];
     int status;
     while(count > 0){
         inumber = alloc_inumber();
+        //wrong but not important
         sprintf(file_name, "file%llu", inumber>>4 );
         status = dir_add_entry(dir, file_name, inumber);
         assert(status == 0);
@@ -322,7 +324,7 @@ void dir_stress_test(){
 }
 
 
-int main2(){
+int main(){
     init_connection();
     init_inode();
     init_free_map();
