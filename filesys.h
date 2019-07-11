@@ -21,18 +21,19 @@ int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
 int write_file (file_info_t* fi, void* buf, size_t len);
 int read_file (file_info_t* fi, void* buf, size_t len);
 void seek_file (file_info_t* fi, size_t new_pos);
-int getattr_file (file_info_t* fi);
-int getattr_path (char* path);
-int get_file_size(char* path);
+int getattr_inode (inode_t* inode);
+int getattr_path (const char* path);
+int get_file_size(const char* path);
 
 
 int create_file (char* file_name, size_t size);
 int delete_file ();
 
-int filesys_chmod(char* path);
-int filesys_chdir(char* path);
+int filesys_chmod(const char* path);
+int filesys_chdir(const char* path);
 
-int filesys_mkdir(char* path);
-dir_t* filesys_opendir(char* path);
+int filesys_mkdir(const char* path);
+dir_t* filesys_opendir(const char* path);
+int filesys_rmdir(const char* path);
 
 // int rename_file ();

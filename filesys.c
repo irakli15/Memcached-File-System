@@ -25,7 +25,7 @@ void filesys_finish(){
 }
 
 // TODO: need to close directories correctly
-dir_t* follow_path(char* path, char** recv_file_name){
+dir_t* follow_path(const char* path, char** recv_file_name){
     if(path == NULL || strlen(path) < 1 )
         return NULL;
     char path_temp[strlen(path) + 1];
@@ -36,6 +36,7 @@ dir_t* follow_path(char* path, char** recv_file_name){
     char* temp_token;
 
     dir_t* c_dir;
+    dir_t* temp;
 
     if(path[0] == '/'){
         c_dir = dir_open_root();
@@ -49,21 +50,26 @@ dir_t* follow_path(char* path, char** recv_file_name){
     int status = 0;
     int mode = 0;
     while(token != NULL){
-        mode = dir_get_entry_mode(c_dir, token);
         temp_token = strtok(NULL, delim);
         
         // if token is last part
         if(temp_token == NULL){
-            *recv_file_name = path + (token - path_temp);
+            *recv_file_name = (char*) (path + (token - path_temp));
             return c_dir;
         }
 
+        mode = dir_get_entry_mode(c_dir, token);
         if(!S_ISDIR(mode)){
         // printf("%s**\n", token);
             dir_close(c_dir);
             return NULL;
         }
+        temp = c_dir;
         c_dir = dir_open(c_dir, token);
+        dir_close(temp);
+        if(c_dir == NULL){
+            return NULL;
+        }
 
         token = temp_token;
 
@@ -109,11 +115,11 @@ void seek_file (file_info_t* fi, size_t new_pos){
     fi->pos = new_pos;
 }
 
-int getattr_file (file_info_t* fi){
-    return fi->inode->d_inode.mode;
+int getattr_inode (inode_t* inode){
+    return inode->d_inode.mode;
 }
 
-int getattr_path (char* path){
+int getattr_path (const char* path){
     char* file_name;
     dir_t* dir = follow_path(path, &file_name);
     int mode = dir_get_entry_mode(dir, file_name);
@@ -121,7 +127,7 @@ int getattr_path (char* path){
     return mode;
 }
 
-int get_file_size(char* path){
+int get_file_size(const char* path){
     char* file_name;
     dir_t* dir = follow_path(path, &file_name);
     if(dir == NULL)
@@ -139,9 +145,12 @@ int create_file (char* file_name, size_t size);
 int delete_file ();
 
 
-int filesys_mkdir(char* path){
+int filesys_mkdir(const char* path){
     char *name;
     dir_t* f_dir = follow_path(path, &name);
+    if(f_dir == NULL)
+        return -1;
+
     inumber_t inumber = alloc_inumber();
     int status = dir_create(inumber);
     if (status != 0){
@@ -157,30 +166,70 @@ int filesys_mkdir(char* path){
     return status;
 }
 
-int filesys_chdir(char* path){
+int filesys_chdir(const char* path){
     char* dir_name;
     dir_t* dir = follow_path(path, &dir_name);
     if(dir == NULL)
         return -1;
-    dir_t* res_dir = dir_open(dir, dir_name);
-    if(res_dir == NULL)
+
+    if(!S_ISDIR(dir_get_entry_mode(dir, dir_name))){
+        dir_close(dir);
         return -1;
+    }
+
+    dir_t* res_dir = dir_open(dir, dir_name);
+    if(res_dir == NULL){
+        dir_close(dir);
+        return -1;
+    }
     // TODO: root dir closing needs testing
     dir_close(cur_dir);
+    dir_close(dir);
     cur_dir = res_dir;
     return 0;
 }
 
-dir_t* filesys_opendir(char* path){
+dir_t* filesys_opendir(const char* path){
     if(strcmp(path, "/") == 0)
         return dir_open_root();
     char* dir_name;
     dir_t* dir = follow_path(path, &dir_name);
     if(dir == NULL)
         return NULL;
+
+    if(!S_ISDIR(dir_get_entry_mode(dir, dir_name))){
+        dir_close(dir);
+        return NULL;
+    }
+
     dir_t* res_dir = dir_open(dir, dir_name);
     dir_close(dir);
     return res_dir;
+}
+
+int filesys_rmdir(const char* path){
+    if(strcmp(path, "/") == 0)
+        return -1;
+    char* dir_name;
+    dir_t* dir = follow_path(path, &dir_name);
+    if(dir == NULL){
+        return -1;
+    }
+
+    if(!S_ISDIR(dir_get_entry_mode(dir, dir_name))){
+        dir_close(dir);
+        return -1;
+    }
+    dir_t* dir_to_remove = dir_open(dir, dir_name);
+    int status = dir_remove(dir_to_remove);
+    if(status != 0){
+        dir_close(dir_to_remove);
+        dir_close(dir);
+        return -1;
+    }
+    status = dir_remove_entry(dir, dir_name);
+    dir_close(dir);
+    return status;
 }
 
 int main5(){

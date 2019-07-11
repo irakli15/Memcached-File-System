@@ -71,6 +71,8 @@ dir_t* dir_open_root(){
 
 
 int dir_remove(dir_t* dir){
+    if(dir == NULL)
+        return -1;
     if(dir->inode->inumber == ROOT_DIR_INUMBER)
         return -1;
     
@@ -79,13 +81,14 @@ int dir_remove(dir_t* dir){
     
     char file_name[NAME_MAX_LEN];
     while(dir_read(dir, file_name) == 0){
-        if(strcmp(file_name, ".") != 0 || strcmp(file_name, "..") !=0){
-            return -1;
+        if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0){
+            continue;
         }
+        return -1;
     }
-
-    inode_delete(dir->inode);
+    int status = inode_delete(dir->inode);
     free(dir);
+    return status;
 }
 // 1 means reached the end for now
 int dir_read(dir_t* dir, char* file_name_buf){

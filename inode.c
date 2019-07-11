@@ -270,7 +270,7 @@ int inode_delete(inode_t* inode){
             printf("error while removing %llu block\n", i);
         }
     }
-    return 0;
+    return status;
 }
 
 size_t ilen(inode_t* inode){

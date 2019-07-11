@@ -84,8 +84,9 @@ int recv_all(void* buf){
   }
 
   if(strncmp(recvd, "VALUE", 5) != 0){
-    printf("assert\n");
-    printf("%s\n", recvd);
+    for(int i = 0; i < 10; i++)
+      printf("%c", recvd[i]);
+    printf("recvd_size = %d\n", recvd_size);
   }
 
   assert(strncmp(recvd, "VALUE", 5) == 0);
