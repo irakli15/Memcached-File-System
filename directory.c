@@ -11,22 +11,24 @@
 #include "free-map.h"
 
 int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* dir_entry);
+dir_entry_t* dir_lookup(dir_t* dir, char* file_name);
 int find_free_entry(dir_t* dir, size_t* offset);
 int check_file_name(char* file_name);
+dir_t* get_dir(inumber_t inumber);
 
 
-struct dir{
-    inode_t* inode;
-    size_t pos;
-};
+dir_t* dir_open(dir_t* dir, char* dir_name){
+    dir_entry_t* dir_entry = dir_lookup(dir, dir_name);
+    if(dir_entry == NULL)
+        return NULL;
+    if(!S_ISDIR(dir_entry->mode)){
+        return NULL;
+    }
 
-struct dir_entry{
-    inumber_t inumber;
-    char name[NAME_MAX_LEN + 1];
-    int in_use;
-};
+    return get_dir(dir_entry->inumber);
+}
 
-dir_t* dir_open(inumber_t inumber){
+dir_t* get_dir(inumber_t inumber){
     inode_t* inode = inode_open(inumber);
     if(inode == NULL)
         return NULL;
@@ -44,8 +46,8 @@ void dir_close(dir_t* dir){
 }
 
 
-int dir_create(inumber_t inumber, size_t entry_count){
-    return inode_create(inumber, entry_count*sizeof(dir_entry_t), __S_IFDIR);
+int dir_create(inumber_t inumber){
+    return inode_create(inumber, 0, __S_IFDIR);
 }
 
 int dir_create_root(){
@@ -55,13 +57,13 @@ int dir_create_root(){
         return -1;
     }
     dir_t* dir = dir_open_root(ROOT_DIR_INUMBER);
-    dir_add_entry(dir, ".", ROOT_DIR_INUMBER);
+    dir_add_entry(dir, ".", ROOT_DIR_INUMBER, __S_IFDIR);
 
     dir_close(dir);
 }
 
 dir_t* dir_open_root(){
-    return dir_open(ROOT_DIR_INUMBER);
+    return get_dir(ROOT_DIR_INUMBER);
 }
 
 
@@ -113,10 +115,10 @@ int dir_read(dir_t* dir, char* file_name_buf){
     return 1;
 }
 
-int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber){
+int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     if(check_file_name(file_name) != 0)
         return -1;
-    int status = dir_lookup(dir, file_name, NULL);
+    int status = dir_entry_exists(dir, file_name);
     if(status == 0){
         printf("error, file name: %s already exists\n", file_name);
         return -1;
@@ -130,6 +132,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber){
     dir_entry_t dir_entry;
     dir_entry.in_use = 1;
     dir_entry.inumber = inumber;
+    dir_entry.mode = mode;
     strncpy(dir_entry.name, file_name, strlen(file_name));
     dir_entry.name[strlen(file_name)] = 0;
 
@@ -188,19 +191,22 @@ int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* d
     return -1;
 }
 
-// looks for file_name, if found inumber will be filled
-// and returned 0, else -1
-int dir_lookup(dir_t* dir, char* file_name, inumber_t* inumber){
-    dir_entry_t dir_entry;
-    int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
+dir_entry_t* dir_lookup(dir_t* dir, char* file_name){
+    dir_entry_t* dir_entry = malloc(sizeof(dir_entry_t));
+    if(dir_entry == NULL)
+        return NULL;
+
+    int status = dir_lookup_entry(dir, file_name, NULL, dir_entry);
 
     if (status == 0){
-        if(inumber != NULL){
-            *inumber = dir_entry.inumber;
-        }
-        return 0;
+        return dir_entry;
     }
-    return -1;
+    free(dir_entry);
+    return NULL;
+}
+
+int dir_entry_exists(dir_t* dir, char* file_name){
+    return dir_lookup_entry(dir, file_name, NULL, NULL); 
 }
 
 int find_free_entry(dir_t* dir, size_t* offset){
@@ -238,10 +244,32 @@ void dir_reset_seek(dir_t* dir){
         dir->pos = 0;
 }
 
+int dir_get_entry_mode(dir_t* dir, char* file_name){
+    dir_entry_t dir_entry;
+    int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
+        // printf("%s**\n", file_name);
+
+        // printf("%d\n", status);
+
+    if (status == 0){
+       return dir_entry.mode;
+    }
+    return -1;
+}
+
+dir_t* dir_reopen(dir_t* dir){
+    dir_t* new_dir = malloc(sizeof(dir_t));
+    new_dir->inode = inode_open(dir->inode->inumber);
+    new_dir->pos = 0;
+    return new_dir;
+}
+
+
 void readdir_full(dir_t* dir){
-    char buff[NAME_MAX_LEN];
+    char buff[NAME_MAX_LEN + 1];
     int status;
-    printf("start:\n");
+    
+    printf("------------------\n");
 
     while(1){
         status = dir_read(dir, buff);
@@ -253,87 +281,5 @@ void readdir_full(dir_t* dir){
         }
         printf("%s\n", buff);
     }
-    printf("reached end\n");
-}
-
-void basic_dir_create_read_test(){
-    flush_all();    
-    inumber_t inumber = alloc_inumber();
-    int status = dir_create(inumber,0);
-    // printf("%d\n", 3<<4);
-    printf("create status %d\n", status);
-    dir_t* dir = dir_open(inumber);
-    status = dir_add_entry(dir, "file1", alloc_inumber());
-    printf("add file1 status %d\n", status);
-    status = dir_add_entry(dir, "file2", alloc_inumber());
-    printf("add file2 status %d\n", status);
-    status = dir_add_entry(dir, "file3", alloc_inumber());
-    printf("add file3 status %d\n", status);
-
-    status = dir_add_entry(dir, "file3", alloc_inumber());
-    printf("add file3 again status %d\n", status);
-    readdir_full(dir);
-
-
-    status = dir_remove_entry(dir, "file2");
-    printf("remove file2 status %d\n", status);
-    dir_reset_seek(dir);
-    readdir_full(dir);
-    status = dir_add_entry(dir, "file4", alloc_inumber());
-    printf("add file4 status %d\n", status);
-
-    dir_remove_entry(dir, "file1");
-    dir_reset_seek(dir);
-    readdir_full(dir);
-
-    dir_remove_entry(dir, "file3");
-    dir_reset_seek(dir);
-    readdir_full(dir);
-
-    dir_remove_entry(dir, "file4");
-    dir_reset_seek(dir);
-    readdir_full(dir);
-
-    status = dir_add_entry(dir, "file4", alloc_inumber());
-    printf("add file4 again status %d\n", status);
-}
-
-
-void add_entries(dir_t* dir, int count){
-    inumber_t inumber;
-    char file_name[10];
-    int status;
-    while(count > 0){
-        inumber = alloc_inumber();
-        //wrong but not important
-        sprintf(file_name, "file%llu", inumber>>4 );
-        status = dir_add_entry(dir, file_name, inumber);
-        assert(status == 0);
-        count--;
-    }
-}
-
-void dir_stress_test(){
-    flush_all();
-    inumber_t dir_inumber = alloc_inumber();
-    int status = dir_create(dir_inumber, 0);
-    dir_t* dir = dir_open(dir_inumber);
-    assert(status == 0);
-    add_entries(dir, 5000/sizeof(dir_entry_t));
-    readdir_full(dir);
-}
-
-
-int main(){
-    init_connection();
-    init_inode();
-    init_free_map();
-    flush_all();
-    // basic_dir_create_read_test();
-    // dir_stress_test();
-    dir_create_root();
-    dir_t* dir = dir_open_root();
-    readdir_full(dir);
-    flush_all();
-    return 0;
+    printf("=================\n");
 }
