@@ -18,6 +18,8 @@ dir_t* get_dir(inumber_t inumber);
 
 
 dir_t* dir_open(dir_t* dir, char* dir_name){
+    if(strcmp(dir_name, "/")==0)
+        return dir_open_root();
     dir_entry_t* dir_entry = dir_lookup(dir, dir_name);
     if(dir_entry == NULL)
         return NULL;
@@ -168,6 +170,8 @@ int dir_remove_entry(dir_t* dir, char* file_name){
 int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* dir_entry){
     if(check_file_name(file_name) != 0)
         return -1;
+    if(dir == NULL)
+        return -1;
 
     size_t pos = 0;
     dir_entry_t entry;
@@ -246,6 +250,9 @@ void dir_reset_seek(dir_t* dir){
 
 int dir_get_entry_mode(dir_t* dir, char* file_name){
     dir_entry_t dir_entry;
+    if(dir == NULL || file_name == NULL)
+        return -1;
+        
     int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
         // printf("%s**\n", file_name);
 
@@ -262,6 +269,18 @@ dir_t* dir_reopen(dir_t* dir){
     new_dir->inode = inode_open(dir->inode->inumber);
     new_dir->pos = 0;
     return new_dir;
+}
+
+int dir_get_entry_size(dir_t* dir, char* file_name){
+    if(dir == NULL || check_file_name(file_name) != 0)
+        return -1;
+    dir_entry_t* entry = dir_lookup(dir, file_name);
+    if(entry == NULL)
+        return -1;
+    inode_t* inode = inode_open(entry->inumber);
+    int size = ilen(inode);
+    inode_close(inode);
+    return size;
 }
 
 

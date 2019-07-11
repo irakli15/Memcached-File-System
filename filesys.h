@@ -22,6 +22,8 @@ int write_file (file_info_t* fi, void* buf, size_t len);
 int read_file (file_info_t* fi, void* buf, size_t len);
 void seek_file (file_info_t* fi, size_t new_pos);
 int getattr_file (file_info_t* fi);
+int getattr_path (char* path);
+int get_file_size(char* path);
 
 
 int create_file (char* file_name, size_t size);
@@ -31,4 +33,6 @@ int filesys_chmod(char* path);
 int filesys_chdir(char* path);
 
 int filesys_mkdir(char* path);
+dir_t* filesys_opendir(char* path);
+
 // int rename_file ();

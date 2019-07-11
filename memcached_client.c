@@ -83,6 +83,11 @@ int recv_all(void* buf){
     return -1;
   }
 
+  if(strncmp(recvd, "VALUE", 5) != 0){
+    printf("assert\n");
+    printf("%s\n", recvd);
+  }
+
   assert(strncmp(recvd, "VALUE", 5) == 0);
   int index = 0;
   for(int i = 0; i < 3; index++){

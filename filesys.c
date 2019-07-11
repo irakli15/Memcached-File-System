@@ -59,7 +59,7 @@ dir_t* follow_path(char* path, char** recv_file_name){
         }
 
         if(!S_ISDIR(mode)){
-        printf("%s**\n", token);
+        // printf("%s**\n", token);
             dir_close(c_dir);
             return NULL;
         }
@@ -68,6 +68,8 @@ dir_t* follow_path(char* path, char** recv_file_name){
         token = temp_token;
 
     }
+    // shouldn't come here
+    assert(0);
     return NULL;
 }
 
@@ -112,8 +114,23 @@ int getattr_file (file_info_t* fi){
 }
 
 int getattr_path (char* path){
-    dir_get_entry_mode(cur_dir, path);
+    char* file_name;
+    dir_t* dir = follow_path(path, &file_name);
+    int mode = dir_get_entry_mode(dir, file_name);
+    dir_close(dir);
+    return mode;
 }
+
+int get_file_size(char* path){
+    char* file_name;
+    dir_t* dir = follow_path(path, &file_name);
+    if(dir == NULL)
+        return -1;
+    int size = dir_get_entry_size(dir, file_name);
+    dir_close(dir);
+    return size;
+}
+
 
 
 
@@ -136,7 +153,7 @@ int filesys_mkdir(char* path){
     dir_add_entry(dir, ".", inumber, __S_IFDIR);
     dir_add_entry(dir, "..", f_dir->inode->inumber, __S_IFDIR);
     dir_close(dir);
-    // dir_close(f_dir);
+    dir_close(f_dir);
     return status;
 }
 
@@ -148,15 +165,32 @@ int filesys_chdir(char* path){
     dir_t* res_dir = dir_open(dir, dir_name);
     if(res_dir == NULL)
         return -1;
+    // TODO: root dir closing needs testing
+    dir_close(cur_dir);
     cur_dir = res_dir;
     return 0;
 }
 
-int main(){
+dir_t* filesys_opendir(char* path){
+    if(strcmp(path, "/") == 0)
+        return dir_open_root();
+    char* dir_name;
+    dir_t* dir = follow_path(path, &dir_name);
+    if(dir == NULL)
+        return NULL;
+    dir_t* res_dir = dir_open(dir, dir_name);
+    dir_close(dir);
+    return res_dir;
+}
+
+int main5(){
+    printf("*** real mode %d\n", __S_IFDIR);
+
     filesys_init();
     filesys_mkdir("/hi");
     readdir_full(cur_dir);
 
+    printf("***mode %d\n", getattr_path("/hi/hello"));
     assert(filesys_mkdir("/hi/hello") == 0);
     
     assert(filesys_chdir("/hi") == 0);
