@@ -79,14 +79,36 @@ dir_t* follow_path(const char* path, char** recv_file_name){
     return NULL;
 }
 
-file_info_t* open_file (char* file_name){
+file_info_t* open_file (char* path){
+    char* file_name;
+    dir_t* dir = follow_path(path, &file_name);
+    if(dir == NULL)
+        return NULL;
+    inumber_t inumber;
+    if(dir_entry_exists(dir, file_name))
+        inumber = dir_get_entry_inumber(dir, file_name);
+    else
+        return NULL;
+    
+    inode_t* inode = inode_open(inumber);
+    if(inode == NULL)
+        return NULL;
+
     file_info_t* fi = malloc(sizeof(file_info_t));
+    fi->inode = inode;
+    fi->pos  = 0;
 }
 
-
 void close_file (file_info_t* fi){
-    inode_close(fi->inode);
-    free(fi);
+    if(fi != NULL){
+        inode_close(fi->inode);
+        free(fi);
+    }
+}
+
+void reset_file_seek (file_info_t* fi){
+    if(fi != NULL)
+        fi->pos = 0;
 }
 
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
@@ -141,7 +163,30 @@ int get_file_size(const char* path){
 
 
 
-int create_file (char* file_name, size_t size);
+file_info_t* create_file (const char* path, uint64_t mode){
+    char* file_name;
+    dir_t* dir = follow_path(path, &file_name);
+    inode_t* inode;
+
+    if(dir == NULL)
+        return NULL;
+    readdir_full(dir);
+    if(dir_entry_exists(dir, file_name) == 0) {
+        inode = inode_open(dir_get_entry_inumber(dir, file_name));
+    }else{
+        inumber_t inumber = alloc_inumber();
+        if(inode_create(inumber, 0, mode) != 0)
+            return NULL;
+        inode = inode_open(inumber);
+        dir_add_entry(dir, file_name, inumber, (int)mode);
+    }
+    if(inode == NULL)
+        return NULL;
+    file_info_t* fi = malloc(sizeof(file_info_t));
+    fi->inode=inode;
+    fi->pos = 0;
+    return fi;
+}
 int delete_file ();
 
 

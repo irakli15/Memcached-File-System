@@ -26,8 +26,9 @@ dir_t* dir_open(dir_t* dir, char* dir_name){
     if(!S_ISDIR(dir_entry->mode)){
         return NULL;
     }
-
-    return get_dir(dir_entry->inumber);
+    dir_t* res_dir = get_dir(dir_entry->inumber);
+    free(dir_entry);
+    return res_dir;
 }
 
 dir_t* get_dir(inumber_t inumber){
@@ -283,7 +284,19 @@ int dir_get_entry_size(dir_t* dir, char* file_name){
     inode_t* inode = inode_open(entry->inumber);
     int size = ilen(inode);
     inode_close(inode);
+    free(entry);
     return size;
+}
+
+inumber_t dir_get_entry_inumber(dir_t* dir, char* file_name){
+    if(dir == NULL || check_file_name(file_name) != 0)
+        return -1;
+    dir_entry_t* entry = dir_lookup(dir, file_name);
+    if(entry == NULL)
+        return -1;
+    inumber_t inumber = entry->inumber;
+    free(entry);
+    return inumber;
 }
 
 

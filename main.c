@@ -92,7 +92,7 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		// printf("%d mine\n", dir_get_entry_mode(cur_dir, path+1) | 0755);
 		// printf("%d not mine\n", S_IFDIR | 0755);
 
-		stbuf->st_mode = S_IFDIR | 0777;//0755;
+		stbuf->st_mode = mode | 0777;//0755;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = get_file_size(path);
 	} 
@@ -102,9 +102,19 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 	return res;
 }
 
+int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
+	printf("create: %s\n", path);
+	file_info_t* f_info = create_file(path, mode);
+	fi->fh = (uint64_t)f_info;
+	if(f_info == NULL)
+		return -1;
+	return 0;
+}
+
 static int fs_open(const char *path, struct fuse_file_info *fi)
 {
 	printf("open file\n");
+
 	if (strcmp(path+1, "test") != 0)
 		return -ENOENT;
 
@@ -190,7 +200,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		return -1;
     char file_name[NAME_MAX_LEN];
     while(dir_read(dir, file_name) == 0){
-		// printf("%s\n", file_name);
+		printf("%s\n", file_name);
         filler(buf, file_name, NULL, 0, 0);
     }
 	dir_close(dir);
@@ -206,6 +216,7 @@ static struct fuse_operations fs_oper = {
 	.readdir	= fs_readdir,
 	.opendir	= fs_opendir,
 	.releasedir = fs_releasedir,
+	.create		= fs_create,
 	.open		= fs_open,
 	.read		= fs_read,
 	.mkdir 		= fs_mkdir,

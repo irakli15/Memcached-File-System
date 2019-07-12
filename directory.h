@@ -43,4 +43,5 @@ void readdir_full(dir_t* dir);
 
 int dir_get_entry_mode(dir_t* dir, char* file_name);
 int dir_get_entry_size(dir_t* dir, char* file_name);
+inumber_t dir_get_entry_inumber(dir_t* dir, char* file_name);
 #endif
