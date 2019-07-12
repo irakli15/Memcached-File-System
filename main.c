@@ -37,6 +37,7 @@
 
 #include "filesys.h"
 
+#include <unistd.h>
 /*
  * Command line options
  *
@@ -56,7 +57,7 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
-static void *hello_init(struct fuse_conn_info *conn,
+static void *fs_init(struct fuse_conn_info *conn,
 			struct fuse_config *cfg)
 {
 	(void) conn;
@@ -64,16 +65,19 @@ static void *hello_init(struct fuse_conn_info *conn,
 	return NULL;
 }
 
-static int hello_getattr(const char *path, struct stat *stbuf,
+static int fs_getattr(const char *path, struct stat *stbuf,
 			 struct fuse_file_info *fi)
 {
 	(void) fi;
 	int res = 0;
 	// printf("getattr \n");
-	// 	printf("path %s\n", path);
+		printf("getattr path %s\n", path);
+		if(fi != NULL)
+	printf("fi: %d\n", fi->fh);
+
 	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
-		stbuf->st_mode = S_IFDIR | 0755;
+		stbuf->st_mode = S_IFDIR | 0777; //0755;
 		stbuf->st_nlink = 2;
 	} else {
 		// stbuf->st_mode = S_IFREG | 0444;
@@ -98,7 +102,75 @@ static int hello_getattr(const char *path, struct stat *stbuf,
 	return res;
 }
 
-static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int fs_open(const char *path, struct fuse_file_info *fi)
+{
+	printf("open file\n");
+	if (strcmp(path+1, "test") != 0)
+		return -ENOENT;
+
+	if ((fi->flags & O_ACCMODE) != O_RDONLY)
+		return -EACCES;
+
+	return 0;
+}
+
+static int fs_read(const char *path, char *buf, size_t size, off_t offset,
+		      struct fuse_file_info *fi)
+{
+	printf("read\n");
+	// printf("hi\n");
+	size_t len;
+	(void) fi;
+	if(strcmp(path+1, "test") != 0)
+		return -ENOENT;
+	char str_buf[10];
+	memset(str_buf, 0, 10);
+    size = 0;
+
+	return size;
+}
+
+static int fs_mkdir(const char *path, mode_t mode)
+{
+	int res;
+	printf("mkdir\n");
+	// printf("%s\n", path);
+	res = filesys_mkdir(path);
+	if (res == -1)
+		return -errno;
+	
+	// readdir_full(filesys_opendir("/hi"));
+
+	return 0;
+}
+
+static int fs_rmdir(const char *path){
+	printf("rmdir path: %s\n", path);
+	return filesys_rmdir(path);
+}
+
+static int fs_opendir(const char *path, struct fuse_file_info *fi){
+	printf("opendir path: %s\n", path);
+	dir_t* dir = filesys_opendir(path);
+		if(fi != NULL)
+	fi->fh = (uint64_t)dir;
+	printf("fi: %d\n", fi->fh);
+	if (dir == NULL)
+		return -1;
+	return 0;
+}
+
+static int fs_releasedir(const char *path, struct fuse_file_info *fi){
+	printf("releasedir: %s\n", path);
+	if(fi != NULL){
+		printf("fi: %d\n", fi->fh);
+		dir_close((dir_t*)fi->fh);
+		return 0;
+	}
+	return -1;
+}
+
+static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi,
 			 enum fuse_readdir_flags flags)
 {
@@ -106,7 +178,9 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 	(void) flags;
 
-	printf("readdir\n");
+	printf("readdir path: %s\n", path);
+		if(fi != NULL)	
+	printf("fi: %d\n", fi->fh);
 
 	// filler(buf, ".", NULL, 0, 0);
 	// filler(buf, "..", NULL, 0, 0);
@@ -124,61 +198,18 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
-static int hello_open(const char *path, struct fuse_file_info *fi)
-{
-	printf("open file\n");
-	if (strcmp(path+1, "test") != 0)
-		return -ENOENT;
-
-	if ((fi->flags & O_ACCMODE) != O_RDONLY)
-		return -EACCES;
-
-	return 0;
-}
-
-static int hello_read(const char *path, char *buf, size_t size, off_t offset,
-		      struct fuse_file_info *fi)
-{
-	printf("read\n");
-	// printf("hi\n");
-	size_t len;
-	(void) fi;
-	if(strcmp(path+1, "test") != 0)
-		return -ENOENT;
-	char str_buf[10];
-	memset(str_buf, 0, 10);
-    size = 0;
-
-	return size;
-}
-
-static int hello_mkdir(const char *path, mode_t mode)
-{
-	int res;
-	printf("mkdir\n");
-	// printf("%s\n", path);
-	res = filesys_mkdir(path);
-	if (res == -1)
-		return -errno;
-	
-	// readdir_full(filesys_opendir("/hi"));
-
-	return 0;
-}
-
-static int hello_rmdir(const char *path){
-	return filesys_rmdir(path);
-}
 
 
-static struct fuse_operations hello_oper = {
-	.init       = hello_init,
-	.getattr	= hello_getattr,
-	.readdir	= hello_readdir,
-	.open		= hello_open,
-	.read		= hello_read,
-	.mkdir 		= hello_mkdir,
-	.rmdir		= hello_rmdir
+static struct fuse_operations fs_oper = {
+	.init       = fs_init,
+	.getattr	= fs_getattr,
+	.readdir	= fs_readdir,
+	.opendir	= fs_opendir,
+	.releasedir = fs_releasedir,
+	.open		= fs_open,
+	.read		= fs_read,
+	.mkdir 		= fs_mkdir,
+	.rmdir		= fs_rmdir
 };
 
 
@@ -199,8 +230,7 @@ int main(int argc, char *argv[])
     filesys_init();
     filesys_mkdir("/hi");
     filesys_mkdir("/hi/ho");
-
-
+	filesys_mkdir("/hey");
 
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
@@ -226,7 +256,7 @@ int main(int argc, char *argv[])
 		args.argv[0][0] = '\0';
 	}
 
-	ret = fuse_main(args.argc, args.argv, &hello_oper, NULL);
+	ret = fuse_main(args.argc, args.argv, &fs_oper, NULL);
 	fuse_opt_free_args(&args);
 	return ret;
 }
