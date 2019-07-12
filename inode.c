@@ -144,7 +144,7 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         #endif
 
         // if(offset + write_size >= ilen(inode)){
-        if(bytes_to_nblock(offset + write_size) != bytes_to_nblock(ilen(inode))){
+        if(bytes_to_nblock(offset + write_size) > bytes_to_nblock(ilen(inode))){
             status = grow_inode(inode, offset + write_size);
             #ifdef DEBUG_WRITE
                 // printf("adding %lu blocks\n", block_count);
