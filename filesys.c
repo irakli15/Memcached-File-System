@@ -79,13 +79,13 @@ dir_t* follow_path(const char* path, char** recv_file_name){
     return NULL;
 }
 
-file_info_t* open_file (char* path){
+file_info_t* open_file (const char* path){
     char* file_name;
     dir_t* dir = follow_path(path, &file_name);
     if(dir == NULL)
         return NULL;
     inumber_t inumber;
-    if(dir_entry_exists(dir, file_name))
+    if(dir_entry_exists(dir, file_name) == 0)
         inumber = dir_get_entry_inumber(dir, file_name);
     else
         return NULL;
@@ -97,6 +97,7 @@ file_info_t* open_file (char* path){
     file_info_t* fi = malloc(sizeof(file_info_t));
     fi->inode = inode;
     fi->pos  = 0;
+    return fi;
 }
 
 void close_file (file_info_t* fi){
@@ -121,7 +122,7 @@ int write_file (file_info_t* fi, void* buf, size_t len){
     int status = inode_write(fi->inode, buf, fi->pos, len);
     if (status != -1){
         fi->pos += len;
-        return status;
+        return len;
     }
     return -1;
 }
@@ -129,7 +130,7 @@ int read_file (file_info_t* fi, void* buf, size_t len){
     int status = inode_read(fi->inode, buf, fi->pos, len);
     if (status != -1){
         fi->pos += len;
-        return status;
+        return len;
     }
     return -1;
 }

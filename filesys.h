@@ -14,7 +14,7 @@ dir_t* cur_dir;
 
 void filesys_init();
 
-file_info_t* open_file (char* path);
+file_info_t* open_file (const char* path);
 void close_file (file_info_t* fi);
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len);

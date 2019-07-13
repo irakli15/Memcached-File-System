@@ -108,19 +108,21 @@ int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	fi->fh = (uint64_t)f_info;
 	if(f_info == NULL)
 		return -1;
+	fi->flags |= O_RDWR;
+
 	return 0;
 }
 
 static int fs_open(const char *path, struct fuse_file_info *fi)
 {
 	printf("open file\n");
-
-	if (strcmp(path+1, "test") != 0)
+	file_info_t* f_info = open_file(path);
+	if (f_info == NULL)
 		return -ENOENT;
-
-	if ((fi->flags & O_ACCMODE) != O_RDONLY)
-		return -EACCES;
-
+	// if ((fi->flags & O_ACCMODE) != O_RDONLY)
+	// 	return -EACCES;
+	fi->fh = (uint64_t)f_info;
+	fi->flags |= O_RDWR;
 	return 0;
 }
 
@@ -128,16 +130,16 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
 	printf("read\n");
-	// printf("hi\n");
-	size_t len;
-	(void) fi;
-	if(strcmp(path+1, "test") != 0)
-		return -ENOENT;
-	char str_buf[10];
-	memset(str_buf, 0, 10);
-    size = 0;
+	file_info_t* f_info = (file_info_t*)fi->fh;
+	return read_file(f_info, buf, size);
+}
 
-	return size;
+static int fs_write(const char* path, const char *buf, size_t size, off_t offset, 
+			struct fuse_file_info* fi)
+{
+	printf("write\n");
+	file_info_t* f_info = (file_info_t*)fi->fh;
+	return write_file(f_info, (void*)buf, size);
 }
 
 static int fs_mkdir(const char *path, mode_t mode)
@@ -200,7 +202,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		return -1;
     char file_name[NAME_MAX_LEN];
     while(dir_read(dir, file_name) == 0){
-		printf("%s\n", file_name);
+		// printf("%s\n", file_name);
         filler(buf, file_name, NULL, 0, 0);
     }
 	dir_close(dir);
@@ -219,6 +221,7 @@ static struct fuse_operations fs_oper = {
 	.create		= fs_create,
 	.open		= fs_open,
 	.read		= fs_read,
+	.write		= fs_write,
 	.mkdir 		= fs_mkdir,
 	.rmdir		= fs_rmdir
 };
@@ -242,6 +245,8 @@ int main(int argc, char *argv[])
     filesys_mkdir("/hi");
     filesys_mkdir("/hi/ho");
 	filesys_mkdir("/hey");
+
+	create_file("/file", __S_IFREG);
 
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
