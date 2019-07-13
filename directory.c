@@ -147,6 +147,13 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     if(status != 0)
         printf("couldn't add entry to dir\n");
     
+    if(status == 0){
+        inode_t* inode = inode_open(inumber);
+        inode->d_inode.nlink++;
+        status = update_block(inode->inumber, &inode->d_inode);
+        inode_close(inode);
+    }
+    
     return status;
 }
 
@@ -162,12 +169,21 @@ int dir_remove_entry(dir_t* dir, char* file_name){
     if (status != 0){
         return -1;
     }
+    inumber_t inumber = dir_entry.inumber;
     dir_entry.in_use = 0;
     status = inode_write(dir->inode, &dir_entry, offset, sizeof(dir_entry));
     if(status != 0){
         printf("failed to remove  %s\n", file_name);
         return -1;
     }
+
+    if(status == 0){
+        inode_t* inode = inode_open(inumber);
+        inode->d_inode.nlink--;
+        status = update_block(inode->inumber, &inode->d_inode);
+        inode_close(inode);
+    }
+
     return 0;
 }
 

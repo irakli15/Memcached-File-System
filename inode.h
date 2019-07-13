@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define BLOCK_SIZE 4096
-#define INODE_PAD_SIZE BLOCK_SIZE - 20
+#define INODE_PAD_SIZE BLOCK_SIZE - 36
 
 #define FREE_MAP_INUMBER 0
 #define ROOT_DIR_INUMBER 4294967296 // 1 << 4*8
@@ -34,6 +34,7 @@ struct disk_inode{
   inumber_t inumber; //8
   size_t length; //8
   int mode; //4 
+  size_t nlink; // 8
   char unused[INODE_PAD_SIZE];
 };
 typedef struct disk_inode disk_inode;

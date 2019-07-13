@@ -24,7 +24,7 @@ int read_file (file_info_t* fi, void* buf, size_t len);
 void seek_file (file_info_t* fi, size_t new_pos);
 void reset_file_seek (file_info_t* fi);
 file_info_t* create_file (const char* path, uint64_t mode);
-int delete_file ();
+int delete_file (const char* path);
 
 int getattr_inode (inode_t* inode);
 int getattr_path (const char* path);

@@ -44,6 +44,7 @@ int inode_create(inumber_t inumber, size_t size, int mode){
     d_inode.inumber = inumber;
     d_inode.length = 0;
     d_inode.mode = mode;
+    d_inode.nlink = 0;
     int status = alloc_blocks(&d_inode, block_count);
     if(status != 0)
         return status;
@@ -273,16 +274,22 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
 }
 
 int inode_delete(inode_t* inode){
+    if(inode == NULL)
+        return -1;
+    if(inode->d_inode.nlink != 0)
+        return -1;
+
     if(inode->open_count > 1)
         return -1;
     inumber_t max_index = block_to_inumber(inode->inumber, bytes_to_index(ilen(inode)));
     int status = 0;
-    for(inumber_t i = inode->inumber; i <= max_index; i++){
+    for(inumber_t i = inode->inumber; i < max_index; i++){
         status = remove_block(i);
         if(status != 0){
             printf("error while removing %llu block\n", i);
         }
     }
+    inode_close(inode);
     return status;
 }
 

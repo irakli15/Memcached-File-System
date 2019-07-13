@@ -160,6 +160,13 @@ int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	return 0;
 }
 
+int fs_unlink(const char *path){
+	printf("delete: %s\n", path);
+	int status= delete_file(path);
+	printf("status %d\n", status);
+	return status;
+}
+
 static int fs_open(const char *path, struct fuse_file_info *fi)
 {
 	printf("open file\n");
@@ -177,9 +184,9 @@ static int fs_open(const char *path, struct fuse_file_info *fi)
 }
 int fs_release(const char *path, struct fuse_file_info *fi){
 	printf("close file\n");
-	// file_handle_t* fh = (file_handle_t*)fi->fh;
-	// close_file(fh->ptr);
-	// free(fh);
+	file_handle_t* fh = (file_handle_t*)fi->fh;
+	close_file(fh->ptr);
+	free(fh);
 	return 0;
 }
 
@@ -280,6 +287,13 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
+// currently everything is written to memcached
+// always, don't think I'll need to implement this.
+int fs_fsyncdir(const char *path, int isdatasync, struct fuse_file_info *fi){
+	printf("fsyncdir\n");
+	return 0;
+}
+
 
 
 static struct fuse_operations fs_oper = {
@@ -289,12 +303,14 @@ static struct fuse_operations fs_oper = {
 	.opendir	= fs_opendir,
 	.releasedir = fs_releasedir,
 	.create		= fs_create,
+	.unlink		= fs_unlink,
 	.open		= fs_open,
 	.release	= fs_release,
 	.read		= fs_read,
 	.write		= fs_write,
 	.mkdir 		= fs_mkdir,
 	.rmdir		= fs_rmdir,
+	.fsyncdir  	= fs_fsyncdir,
 	.destroy	= fs_destroy
 };
 
@@ -312,7 +328,7 @@ static void show_help(const char *progname)
 }
 
 int main(int argc, char *argv[])
-{
+{ fuse_get_context();
     // filesys_mkdir("/hi");
     // filesys_mkdir("/hi/ho");
 	// filesys_mkdir("/hey");

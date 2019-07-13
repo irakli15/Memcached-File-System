@@ -192,8 +192,23 @@ file_info_t* create_file (const char* path, uint64_t mode){
     fi->pos = 0;
     return fi;
 }
-int delete_file ();
-
+int delete_file (const char* path){
+    char* file_name;
+    dir_t* dir = follow_path(path, &file_name);
+    if(dir == NULL)
+        return -1;
+    inumber_t inumber = dir_get_entry_inumber(dir, file_name);
+    int status = dir_remove_entry(dir, file_name);
+    if(status != 0)
+        return -1;
+    
+    inode_t* inode = inode_open(inumber);
+    status = inode_delete(inode);
+    if(status != 0)
+        inode_close(inode);
+    dir_close(dir);
+    return status;
+}
 
 int filesys_mkdir(const char* path){
     char *name;
