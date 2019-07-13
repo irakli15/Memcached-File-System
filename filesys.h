@@ -38,4 +38,6 @@ int filesys_mkdir(const char* path);
 dir_t* filesys_opendir(const char* path);
 int filesys_rmdir(const char* path);
 
+char* get_last_part(const char* path);
+
 // int rename_file ();

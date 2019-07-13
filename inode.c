@@ -18,6 +18,9 @@ void init_inode(){
     // inode_create_specific(ROOT_DIR_BLOCK, 10, 0); // need to get S_IFDIR
 
     list_init(&opened_inodes);
+    if(sizeof(disk_inode) != BLOCK_SIZE){
+        printf("sizeof: %lu\n", sizeof(disk_inode));
+    }
     assert(sizeof(disk_inode) == BLOCK_SIZE);
 }
 
@@ -40,6 +43,7 @@ int inode_create(inumber_t inumber, size_t size, int mode){
     disk_inode d_inode; 
     d_inode.inumber = inumber;
     d_inode.length = 0;
+    d_inode.mode = mode;
     int status = alloc_blocks(&d_inode, block_count);
     if(status != 0)
         return status;

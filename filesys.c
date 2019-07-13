@@ -171,12 +171,12 @@ file_info_t* create_file (const char* path, uint64_t mode){
 
     if(dir == NULL)
         return NULL;
-    readdir_full(dir);
+    // readdir_full(dir);
     if(dir_entry_exists(dir, file_name) == 0) {
         inode = inode_open(dir_get_entry_inumber(dir, file_name));
     }else{
         inumber_t inumber = alloc_inumber();
-        if(inode_create(inumber, 0, mode) != 0)
+        if(inode_create(inumber, 0, (int)mode) != 0)
             return NULL;
         inode = inode_open(inumber);
         dir_add_entry(dir, file_name, inumber, (int)mode);
@@ -276,6 +276,24 @@ int filesys_rmdir(const char* path){
     status = dir_remove_entry(dir, dir_name);
     dir_close(dir);
     return status;
+}
+
+char* get_last_part(const char* path){
+    if(path == NULL)
+        return NULL;
+    int length = (int)strlen(path);
+    if(length == 0)
+        return NULL;
+
+    char* res;
+
+    length -= 1;
+    while(path + length >= path){
+        if(path[length] == '/')
+            return (char*)path + length;
+        length -= 1;
+    }
+    return NULL;
 }
 
 int main5(){

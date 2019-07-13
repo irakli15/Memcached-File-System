@@ -38,6 +38,16 @@
 #include "filesys.h"
 
 #include <unistd.h>
+
+
+// 0  for file, 1 for dir.
+struct file_handle {
+	void* ptr;
+	int type;
+};
+
+typedef struct file_handle file_handle_t;
+
 /*
  * Command line options
  *
@@ -72,8 +82,10 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 	int res = 0;
 	// printf("getattr \n");
 		printf("getattr path %s\n", path);
-		if(fi != NULL)
-	printf("fi: %d\n", fi->fh);
+	
+	
+	if(fi != NULL)
+		printf("fi: %d\n", fi->fh);
 
 	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
@@ -84,32 +96,55 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		// stbuf->st_nlink = 1;
 		// stbuf->st_size = strlen(options.contents);
 
+		file_handle_t* fh = NULL;
+		if(fi != NULL)
+			fh = (file_handle_t*)fi->fh;
 
-		int mode = getattr_path(path);
+
+		int mode;
+		if(fh == NULL) 
+			mode = getattr_path(path);
+		else{
+			if(fh->type == 1)
+				mode = ((dir_t*)fh->ptr)->inode->d_inode.mode;
+			else
+				mode = ((file_info_t*)fh->ptr)->inode->d_inode.mode;
+
+
+		}
 		if(mode == -1)
 			return -ENOENT;
 		// dir_t* dir = dir_open(cur_dir, path + 1);
 		// printf("%d mine\n", dir_get_entry_mode(cur_dir, path+1) | 0755);
 		// printf("%d not mine\n", S_IFDIR | 0755);
 
-		stbuf->st_mode = mode | 0777;//0755;
+		stbuf->st_mode = mode | 0755;
 		stbuf->st_nlink = 1;
-		stbuf->st_size = get_file_size(path);
+		if(fh != NULL){
+			if(fh->type == 1)
+				stbuf->st_size = ((dir_t*)fh->ptr)->inode->d_inode.length;
+			else
+				stbuf->st_size = ((file_info_t*)fh->ptr)->inode->d_inode.length;
+		}
+		else
+			stbuf->st_size = get_file_size(path);
 	} 
 	// else
 	// 	res = -ENOENT;
 
-	return res;
+	return 0;
 }
 
 int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	printf("create: %s\n", path);
 	file_info_t* f_info = create_file(path, mode);
-	fi->fh = (uint64_t)f_info;
 	if(f_info == NULL)
 		return -1;
+	file_handle_t* fh = malloc(sizeof(file_handle_t));
+	fh->ptr = f_info;
+	fh->type = 0;
+	fi->fh = (uint64_t)fh;
 	fi->flags |= O_RDWR;
-
 	return 0;
 }
 
@@ -121,8 +156,18 @@ static int fs_open(const char *path, struct fuse_file_info *fi)
 		return -ENOENT;
 	// if ((fi->flags & O_ACCMODE) != O_RDONLY)
 	// 	return -EACCES;
-	fi->fh = (uint64_t)f_info;
+	file_handle_t* fh = malloc(sizeof(file_handle_t));
+	fh->ptr = f_info;
+	fh->type = 0;
+	fi->fh = (uint64_t)fh;
 	fi->flags |= O_RDWR;
+	return 0;
+}
+int fs_release(const char *path, struct fuse_file_info *fi){
+	printf("close file\n");
+	// file_handle_t* fh = (file_handle_t*)fi->fh;
+	// close_file(fh->ptr);
+	// free(fh);
 	return 0;
 }
 
@@ -130,7 +175,7 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
 	printf("read\n");
-	file_info_t* f_info = (file_info_t*)fi->fh;
+	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
 	return read_file(f_info, buf, size);
 }
 
@@ -138,7 +183,9 @@ static int fs_write(const char* path, const char *buf, size_t size, off_t offset
 			struct fuse_file_info* fi)
 {
 	printf("write\n");
-	file_info_t* f_info = (file_info_t*)fi->fh;
+	// printf("fi %d\n", fi->fh);
+	
+	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
 	return write_file(f_info, (void*)buf, size);
 }
 
@@ -164,11 +211,14 @@ static int fs_rmdir(const char *path){
 static int fs_opendir(const char *path, struct fuse_file_info *fi){
 	printf("opendir path: %s\n", path);
 	dir_t* dir = filesys_opendir(path);
-		if(fi != NULL)
-	fi->fh = (uint64_t)dir;
-	printf("fi: %d\n", fi->fh);
 	if (dir == NULL)
 		return -1;
+	file_handle_t* fh = malloc(sizeof(file_handle_t));
+	fh->ptr = dir;
+	fh->type = 1;
+	fi->fh = (uint64_t)fh;
+	printf("fi: %d\n", fi->fh);
+	
 	return 0;
 }
 
@@ -176,7 +226,9 @@ static int fs_releasedir(const char *path, struct fuse_file_info *fi){
 	printf("releasedir: %s\n", path);
 	if(fi != NULL){
 		printf("fi: %d\n", fi->fh);
-		dir_close((dir_t*)fi->fh);
+		file_handle_t* fh = (file_handle_t*)fi->fh;
+		dir_close((dir_t*)fh->ptr);
+		free(fh);
 		return 0;
 	}
 	return -1;
@@ -197,7 +249,12 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	// filler(buf, ".", NULL, 0, 0);
 	// filler(buf, "..", NULL, 0, 0);
 	// filler(buf, options.filename, NULL, 0, 0);
-    dir_t* dir = filesys_opendir(path);
+    dir_t* dir;
+	if(fi == NULL)
+		dir = filesys_opendir(path);
+	else{
+		dir = (dir_t*)((file_handle_t*)fi->fh)->ptr;
+	}
 	if(dir == NULL)
 		return -1;
     char file_name[NAME_MAX_LEN];
@@ -205,7 +262,8 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		// printf("%s\n", file_name);
         filler(buf, file_name, NULL, 0, 0);
     }
-	dir_close(dir);
+	if(fi == NULL)
+		dir_close(dir);
 
 	return 0;
 }
@@ -220,6 +278,7 @@ static struct fuse_operations fs_oper = {
 	.releasedir = fs_releasedir,
 	.create		= fs_create,
 	.open		= fs_open,
+	.release	= fs_release,
 	.read		= fs_read,
 	.write		= fs_write,
 	.mkdir 		= fs_mkdir,
