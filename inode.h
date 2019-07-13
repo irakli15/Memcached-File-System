@@ -4,7 +4,7 @@
 #include "list.h"
 #include <stdlib.h>
 
-#define BLOCK_SIZE 1024
+#define BLOCK_SIZE 4096
 #define INODE_PAD_SIZE BLOCK_SIZE - 20
 
 #define FREE_MAP_INUMBER 0

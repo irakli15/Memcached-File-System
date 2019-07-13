@@ -14,8 +14,10 @@
 
 
 // #define ADD "add"
-#define ETHERNET_MTU 1500
+#define MAX_RECV_SIZE 4200
 #define MSG_MAX_SIZE 128
+
+int send_entry(inumber_t block, void* buf, size_t size, char* operation);
 
 int sock;
 void init_connection(){
@@ -70,9 +72,9 @@ void send_all(void* buf, size_t size){
   returns the data_length, not total received length.
  */
 int recv_all(void* buf){
-  char recvd[ETHERNET_MTU];
-  memset(recvd, 0, ETHERNET_MTU);
-  int recvd_size = recv(sock, recvd, ETHERNET_MTU, 0);
+  char recvd[MAX_RECV_SIZE];
+  memset(recvd, 0, MAX_RECV_SIZE);
+  int recvd_size = recv(sock, recvd, MAX_RECV_SIZE, 0);
 
   if(recvd_size <= 0){
     perror("receive error\n");
@@ -99,14 +101,14 @@ int recv_all(void* buf){
   while(recvd[index-2] != '\r' && recvd[index-1] != '\n' && index < recvd_size)
     index++;
   while(strncmp(recvd + index + data_length + 2, "END", 3) != 0){
-    recvd_size += recv(sock, recvd + recvd_size, ETHERNET_MTU, 0);
+    recvd_size += recv(sock, recvd + recvd_size, MAX_RECV_SIZE, 0);
   }
   memcpy(buf, recvd + index, data_length);
   return data_length;
 }
 
 int add_block(inumber_t block, void* buf){
-  return add_entry(block, buf, BLOCK_SIZE);
+  return send_entry(block, buf, BLOCK_SIZE, "add");
 }
 
 int get_block(inumber_t block, void* buf){
@@ -126,16 +128,17 @@ int remove_block(inumber_t block){
 
 int send_entry(inumber_t block, void* buf, size_t size, char* operation){
   char statement[MSG_MAX_SIZE];
-  memset(statement, 0, MSG_MAX_SIZE);
+  // memset(statement, 0, MSG_MAX_SIZE);
   int stat_len = sprintf(statement, "%s %llu 0 0 %lu\r\n", operation, block, size);
-  send_all(statement, stat_len);
+  // send_all(statement, stat_len);
 
-  char to_send[size + 2];
-  memcpy(to_send, buf, size + 2);
-  to_send[size] = '\r';
-  to_send[size + 1] = '\n';
+  char to_send[size + 2 + stat_len];
+  memcpy(to_send, statement, stat_len);
+  memcpy(to_send + stat_len, buf, size + 2);
+  to_send[size + stat_len] = '\r';
+  to_send[size + 1 + stat_len] = '\n';
 
-  send_all(to_send, size + 2);
+  send_all(to_send, size + 2 + stat_len);
   char recv_buf [MSG_MAX_SIZE];
   memset(recv_buf, 0, MSG_MAX_SIZE);
   int recv_length = recv(sock, recv_buf, MSG_MAX_SIZE, 0);
@@ -147,11 +150,6 @@ int send_entry(inumber_t block, void* buf, size_t size, char* operation){
     return -1;
   }
 }
-
-int add_entry(inumber_t block, void* buf, size_t size){
-  return send_entry(block, buf, size, "add");
-}
-
 
 int get_entry(inumber_t block, char* buf, size_t size){
   char get_statement[MSG_MAX_SIZE];
