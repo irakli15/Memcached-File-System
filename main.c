@@ -71,9 +71,21 @@ static void *fs_init(struct fuse_conn_info *conn,
 			struct fuse_config *cfg)
 {
 	(void) conn;
+    filesys_init();
 	cfg->kernel_cache = 1;
 	return NULL;
 }
+
+void fs_destroy(void *private_data){
+	printf("destroy\n");
+	filesys_finish();
+}
+
+//TODO: implement
+int fs_statfs(const char *path, struct statvfs *st){
+	return 0;
+}
+
 
 static int fs_getattr(const char *path, struct stat *stbuf,
 			 struct fuse_file_info *fi)
@@ -282,7 +294,8 @@ static struct fuse_operations fs_oper = {
 	.read		= fs_read,
 	.write		= fs_write,
 	.mkdir 		= fs_mkdir,
-	.rmdir		= fs_rmdir
+	.rmdir		= fs_rmdir,
+	.destroy	= fs_destroy
 };
 
 
@@ -300,13 +313,11 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[])
 {
-    filesys_init();
-    filesys_mkdir("/hi");
-    filesys_mkdir("/hi/ho");
-	filesys_mkdir("/hey");
+    // filesys_mkdir("/hi");
+    // filesys_mkdir("/hi/ho");
+	// filesys_mkdir("/hey");
 
-	create_file("/file", __S_IFREG);
-
+	// create_file("/file", __S_IFREG);
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 

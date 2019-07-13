@@ -13,10 +13,14 @@ void filesys_init(){
     init_inode();
     init_free_map();
 
-    flush_all();//******************temporary
+    // flush_all();//******************temporary
 
-    dir_create_root();
     cur_dir = dir_open_root();
+    if(cur_dir == NULL){
+        flush_all();
+        dir_create_root();
+        cur_dir = dir_open_root();
+    }
 }
 
 void filesys_finish(){

@@ -13,6 +13,7 @@ typedef struct file_info file_info_t;
 dir_t* cur_dir;
 
 void filesys_init();
+void filesys_finish();
 
 file_info_t* open_file (const char* path);
 void close_file (file_info_t* fi);
