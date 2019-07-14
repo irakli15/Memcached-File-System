@@ -14,7 +14,7 @@ int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* d
 dir_entry_t* dir_lookup(dir_t* dir, char* file_name);
 int find_free_entry(dir_t* dir, size_t* offset);
 int check_file_name(char* file_name);
-dir_t* get_dir(inumber_t inumber);
+dir_t* get_dir(inode_t* inode);
 
 
 dir_t* dir_open(dir_t* dir, char* dir_name){
@@ -23,16 +23,19 @@ dir_t* dir_open(dir_t* dir, char* dir_name){
     dir_entry_t* dir_entry = dir_lookup(dir, dir_name);
     if(dir_entry == NULL)
         return NULL;
-    if(!S_ISDIR(dir_entry->mode)){
+    inode_t* inode = inode_open(dir_entry->inumber);
+    if(inode == NULL)
+        return NULL;
+    if(!S_ISDIR(inode->d_inode.mode)){
+        inode_close(inode);
         return NULL;
     }
-    dir_t* res_dir = get_dir(dir_entry->inumber);
+    dir_t* res_dir = get_dir(inode);
     free(dir_entry);
     return res_dir;
 }
 
-dir_t* get_dir(inumber_t inumber){
-    inode_t* inode = inode_open(inumber);
+dir_t* get_dir(inode_t* inode){
     if(inode == NULL)
         return NULL;
     dir_t* dir = malloc(sizeof(dir_t));
@@ -66,7 +69,8 @@ int dir_create_root(){
 }
 
 dir_t* dir_open_root(){
-    return get_dir(ROOT_DIR_INUMBER);
+    inode_t* inode = inode_open(ROOT_DIR_INUMBER);
+    return get_dir(inode);
 }
 
 
@@ -138,7 +142,6 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     dir_entry_t dir_entry;
     dir_entry.in_use = 1;
     dir_entry.inumber = inumber;
-    dir_entry.mode = mode;
     strncpy(dir_entry.name, file_name, strlen(file_name));
     dir_entry.name[strlen(file_name)] = 0;
 
@@ -149,6 +152,8 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     
     if(status == 0 && !S_ISDIR(mode)){
         inode_t* inode = inode_open(inumber);
+        if(inode == NULL)
+            return -1;
         inode->d_inode.nlink++;
         status = update_block(inode->inumber, &inode->d_inode);
         inode_close(inode);
@@ -157,7 +162,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     return status;
 }
 
-int dir_remove_entry(dir_t* dir, char* file_name, int isdir){
+int dir_remove_entry(dir_t* dir, char* file_name, int mode){
     if(check_file_name(file_name) != 0)
         return -1;
     if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0)
@@ -177,7 +182,8 @@ int dir_remove_entry(dir_t* dir, char* file_name, int isdir){
         return -1;
     }
 
-    if(status == 0 && !isdir){
+    // mustn't open inode if it is dir, as it will already have been removed.
+    if(status == 0 && !S_ISDIR(mode)){
         inode_t* inode = inode_open(inumber);
         inode->d_inode.nlink--;
         status = update_block(inode->inumber, &inode->d_inode);

@@ -13,7 +13,6 @@ struct dir_entry{
     inumber_t inumber;
     char name[NAME_MAX_LEN + 1];
     int in_use;
-    int mode;
 };
 
 typedef struct dir dir_t;
@@ -30,7 +29,7 @@ int dir_remove(dir_t* dir);
 
 int dir_read(dir_t* dir, char* file_name_buf);
 int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode);
-int dir_remove_entry(dir_t* dir, char* file_name, int isdir);
+int dir_remove_entry(dir_t* dir, char* file_name, int mode);
 int dir_entry_exists(dir_t* dir, char* file_name);
 
 void dir_reset_seek(dir_t* dir);

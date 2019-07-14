@@ -198,7 +198,7 @@ int delete_file (const char* path){
     if(dir == NULL)
         return -1;
     inumber_t inumber = dir_get_entry_inumber(dir, file_name);
-    int status = dir_remove_entry(dir, file_name, 0);
+    int status = dir_remove_entry(dir, file_name, __S_IFREG);
     if(status != 0)
         return -1;
     
@@ -292,7 +292,7 @@ int filesys_rmdir(const char* path){
         dir_close(dir);
         return -1;
     }
-    status = dir_remove_entry(dir, dir_name, 1);
+    status = dir_remove_entry(dir, dir_name, __S_IFDIR);
     dir_close(dir);
     return status;
 }
