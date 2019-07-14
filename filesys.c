@@ -185,11 +185,14 @@ file_info_t* create_file (const char* path, uint64_t mode){
         inode = inode_open(inumber);
         dir_add_entry(dir, file_name, inumber, (int)mode);
     }
-    if(inode == NULL)
+    if(inode == NULL){
+        dir_close(dir);
         return NULL;
+    }
     file_info_t* fi = malloc(sizeof(file_info_t));
     fi->inode=inode;
     fi->pos = 0;
+    dir_close(dir);
     return fi;
 }
 int delete_file (const char* path){
@@ -199,8 +202,10 @@ int delete_file (const char* path){
         return -1;
     inumber_t inumber = dir_get_entry_inumber(dir, file_name);
     int status = dir_remove_entry(dir, file_name, __S_IFREG);
-    if(status != 0)
+    if(status != 0){
+        dir_close(dir);
         return -1;
+    }
     
     inode_t* inode = inode_open(inumber);
     status = inode_delete(inode);
@@ -280,7 +285,6 @@ int filesys_rmdir(const char* path){
     if(dir == NULL){
         return -1;
     }
-
     if(!S_ISDIR(dir_get_entry_mode(dir, dir_name))){
         dir_close(dir);
         return -1;
@@ -290,7 +294,7 @@ int filesys_rmdir(const char* path){
     if(status != 0){
         dir_close(dir_to_remove);
         dir_close(dir);
-        return -1;
+        return status;
     }
     status = dir_remove_entry(dir, dir_name, __S_IFDIR);
     dir_close(dir);

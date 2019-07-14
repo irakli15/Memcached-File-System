@@ -9,6 +9,7 @@
 #include "memcached_client.h"
 #include <stdio.h>
 #include "free-map.h"
+#include <errno.h>
 
 int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* dir_entry);
 dir_entry_t* dir_lookup(dir_t* dir, char* file_name);
@@ -80,16 +81,16 @@ int dir_remove(dir_t* dir){
         return -1;
     if(dir->inode->inumber == ROOT_DIR_INUMBER)
         return -1;
-    
+        
     if(dir->inode->open_count > 1)
-        return -1;
+        return -EBUSY;
     
     char file_name[NAME_MAX_LEN];
     while(dir_read(dir, file_name) == 0){
         if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0){
             continue;
         }
-        return -1;
+        return -ENOTEMPTY;
     }
     int status = inode_delete(dir->inode);
     free(dir);
