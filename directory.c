@@ -147,7 +147,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     if(status != 0)
         printf("couldn't add entry to dir\n");
     
-    if(status == 0){
+    if(status == 0 && !S_ISDIR(mode)){
         inode_t* inode = inode_open(inumber);
         inode->d_inode.nlink++;
         status = update_block(inode->inumber, &inode->d_inode);
@@ -157,7 +157,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
     return status;
 }
 
-int dir_remove_entry(dir_t* dir, char* file_name){
+int dir_remove_entry(dir_t* dir, char* file_name, int isdir){
     if(check_file_name(file_name) != 0)
         return -1;
     if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0)
@@ -177,7 +177,7 @@ int dir_remove_entry(dir_t* dir, char* file_name){
         return -1;
     }
 
-    if(status == 0){
+    if(status == 0 && !isdir){
         inode_t* inode = inode_open(inumber);
         inode->d_inode.nlink--;
         status = update_block(inode->inumber, &inode->d_inode);
@@ -273,15 +273,24 @@ int dir_get_entry_mode(dir_t* dir, char* file_name){
     if(dir == NULL || file_name == NULL)
         return -1;
         
-    int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
+    // int status = dir_lookup_entry(dir, file_name, NULL, &dir_entry);
+    if(dir_entry_exists(dir, file_name) != 0)
+        return -1;
+
+    inode_t* inode = inode_open(dir_get_entry_inumber(dir, file_name));
+    if(inode == NULL)
+        return -1;
+    int mode = inode->d_inode.mode;
+    inode_close(inode);
+    return mode;
         // printf("%s**\n", file_name);
 
         // printf("%d\n", status);
 
-    if (status == 0){
-       return dir_entry.mode;
-    }
-    return -1;
+    // if (status == 0){
+    //    return dir_entry.mode;
+    // }
+    // return -1;
 }
 
 dir_t* dir_reopen(dir_t* dir){
@@ -298,6 +307,8 @@ int dir_get_entry_size(dir_t* dir, char* file_name){
     if(entry == NULL)
         return -1;
     inode_t* inode = inode_open(entry->inumber);
+    if(inode == NULL)
+        return -1;
     int size = ilen(inode);
     inode_close(inode);
     free(entry);
@@ -306,10 +317,10 @@ int dir_get_entry_size(dir_t* dir, char* file_name){
 
 inumber_t dir_get_entry_inumber(dir_t* dir, char* file_name){
     if(dir == NULL || check_file_name(file_name) != 0)
-        return -1;
+        return 0;
     dir_entry_t* entry = dir_lookup(dir, file_name);
     if(entry == NULL)
-        return -1;
+        return 0;
     inumber_t inumber = entry->inumber;
     free(entry);
     return inumber;
