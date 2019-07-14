@@ -13,7 +13,7 @@ void filesys_init(){
     init_inode();
     init_free_map();
 
-    // flush_all();//******************temporary
+    flush_all();//******************temporary
 
     cur_dir = dir_open_root();
     if(cur_dir == NULL){
@@ -207,7 +207,7 @@ int delete_file (const char* path){
     if(status != 0)
         inode_close(inode);
     dir_close(dir);
-    return status;
+    return 0;
 }
 
 int filesys_mkdir(const char* path){

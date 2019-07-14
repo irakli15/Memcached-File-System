@@ -41,4 +41,6 @@ int filesys_rmdir(const char* path);
 
 char* get_last_part(const char* path);
 
+dir_t* follow_path(const char* path, char** recv_file_name);
+
 // int rename_file ();

@@ -167,6 +167,31 @@ int fs_unlink(const char *path){
 	return status;
 }
 
+int fs_link(const char* from, const char* to){
+	char* from_file_name;
+	printf("link\n");
+	printf("from: %s\n", from);
+	printf("to: %s\n", to);
+	dir_t* from_dir = follow_path(from, &from_file_name);
+	if(from_dir == NULL)
+		return -1;
+
+	if(dir_entry_exists(from_dir, from_file_name) != 0){
+		dir_close(from_dir);
+		return -1;
+	}
+	inumber_t inumber = dir_get_entry_inumber(from_dir, from_file_name);
+
+	char* to_file_name;
+	dir_t* to_dir = follow_path(to, &to_file_name);
+	if(to_dir == NULL)
+		return -1;
+	printf("tofilename: %s\n", to_file_name);
+	int status = dir_add_entry(to_dir, to_file_name, inumber, __S_IFREG);
+	dir_close(to_dir);
+	return status;
+}
+
 static int fs_open(const char *path, struct fuse_file_info *fi)
 {
 	printf("open file\n");
@@ -304,6 +329,7 @@ static struct fuse_operations fs_oper = {
 	.releasedir = fs_releasedir,
 	.create		= fs_create,
 	.unlink		= fs_unlink,
+	.link 		= fs_link,
 	.open		= fs_open,
 	.release	= fs_release,
 	.read		= fs_read,
