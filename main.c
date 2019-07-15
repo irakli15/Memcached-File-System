@@ -93,11 +93,11 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 	(void) fi;
 	int res = 0;
 	// printf("getattr \n");
-		printf("getattr path %s\n", path);
+		// printf("getattr path %s\n", path);
 	
 	
-	if(fi != NULL)
-		printf("fi: %d\n", fi->fh);
+	// if(fi != NULL)
+	// 	printf("fi: %d\n", fi->fh);
 
 	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
@@ -253,7 +253,7 @@ static int fs_rmdir(const char *path){
 }
 
 static int fs_opendir(const char *path, struct fuse_file_info *fi){
-	printf("opendir path: %s\n", path);
+	// printf("opendir path: %s\n", path);
 	dir_t* dir = filesys_opendir(path);
 	if (dir == NULL)
 		return -1;
@@ -261,15 +261,15 @@ static int fs_opendir(const char *path, struct fuse_file_info *fi){
 	fh->ptr = dir;
 	fh->type = 1;
 	fi->fh = (uint64_t)fh;
-	printf("fi: %d\n", fi->fh);
+	// printf("fi: %d\n", fi->fh);
 	
 	return 0;
 }
 
 static int fs_releasedir(const char *path, struct fuse_file_info *fi){
-	printf("releasedir: %s\n", path);
+	// printf("releasedir: %s\n", path);
 	if(fi != NULL){
-		printf("fi: %d\n", fi->fh);
+		// printf("fi: %d\n", fi->fh);
 		file_handle_t* fh = (file_handle_t*)fi->fh;
 		dir_close((dir_t*)fh->ptr);
 		free(fh);
@@ -286,9 +286,9 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 	(void) flags;
 
-	printf("readdir path: %s\n", path);
-		if(fi != NULL)	
-	printf("fi: %d\n", fi->fh);
+	// printf("readdir path: %s\n", path);
+	// 	if(fi != NULL)	
+	// printf("fi: %d\n", fi->fh);
 
 	// filler(buf, ".", NULL, 0, 0);
 	// filler(buf, "..", NULL, 0, 0);
@@ -319,6 +319,34 @@ int fs_fsyncdir(const char *path, int isdatasync, struct fuse_file_info *fi){
 	return 0;
 }
 
+int fs_symlink (const char *to, const char *from){
+	printf("sym to: %s\n", to);
+	printf("sym from: %s\n", from);
+
+	file_info_t* f_info = create_file(from, __S_IFLNK);
+	if(f_info == NULL)
+		return -1;
+
+	int status = write_file(f_info, (char*)to, strlen(to));
+	close_file(f_info);
+
+	return 0;
+
+}
+
+int fs_readlink (const char *path, char *buf, size_t size){
+	file_info_t* f_info = open_file(path);
+	if(ilen(f_info->inode) > size){
+		close_file(f_info);
+		return -1;
+	}
+
+	int write_length = read_file(f_info, buf, size);
+	buf[write_length] = 0;
+
+	return 0;
+}
+
 
 
 static struct fuse_operations fs_oper = {
@@ -337,7 +365,9 @@ static struct fuse_operations fs_oper = {
 	.mkdir 		= fs_mkdir,
 	.rmdir		= fs_rmdir,
 	.fsyncdir  	= fs_fsyncdir,
-	.destroy	= fs_destroy
+	.destroy	= fs_destroy,
+	.symlink	= fs_symlink,
+	.readlink	= fs_readlink
 };
 
 
