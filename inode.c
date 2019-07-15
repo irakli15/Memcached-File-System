@@ -124,8 +124,9 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         printf("write starting offset: %lu\n", offset);
         printf("write total size: %lu\n", size);
     #endif
-
+    int new_block = 0;
     while(size > 0){
+        new_block = 0;
         block_index = bytes_to_index(offset);
         off_in_block = offset % BLOCK_SIZE;
         left_in_block = BLOCK_SIZE - off_in_block;
@@ -151,21 +152,24 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
 
         // if(offset + write_size >= ilen(inode)){
         if(bytes_to_nblock(offset + write_size) > bytes_to_nblock(ilen(inode))){
-            status = grow_inode(inode, offset + write_size);
-            #ifdef DEBUG_WRITE
-                // printf("adding %lu blocks\n", block_count);
-            #endif
-            if (status == -1){
-                printf("error while adding new block\n");
-                return -1;
-            }
+            // status = grow_inode(inode, offset + write_size);
+            // #ifdef DEBUG_WRITE
+            //     // printf("adding %lu blocks\n", block_count);
+            // #endif
+            // if (status == -1){
+            //     printf("error while adding new block\n");
+            //     return -1;
+            // }
+            new_block = 1;
         }
 
 
         if (off_in_block == 0 && write_size == BLOCK_SIZE){
             status = 0;
-        } else {
+        } else if (new_block == 0){
             status = get_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+        } else{
+            memset(temp_buf, 0, BLOCK_SIZE);
         }
 
 
@@ -177,7 +181,11 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         memcpy(temp_buf + off_in_block, buf + written, write_size);
         if(inum == block_to_inumber(inode->inumber, block_index))
             inum = 0;
-        update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+        if(new_block == 0)
+            update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+        else
+            add_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+
 
         if(offset + write_size > ilen(inode))
             inode->d_inode.length += (write_size - ilen(inode) + offset);

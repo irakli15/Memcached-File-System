@@ -117,7 +117,11 @@ void reset_file_seek (file_info_t* fi){
 }
 
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
-    return inode_write(fi->inode, buf, off, len);
+    int status = inode_write(fi->inode, buf, off, len);
+    if (status != -1){
+        return len;
+    }
+    return -1;
 }
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
     return inode_read(fi->inode, buf, off, len);
