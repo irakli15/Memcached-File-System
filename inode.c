@@ -297,4 +297,9 @@ size_t ilen(inode_t* inode){
     return inode->d_inode.length;
 }
 
+void inode_chmod(inode_t* inode, int mode){
+    inode->d_inode.mode = mode;
+    update_block(inode->inumber, &inode->d_inode);
+}
+
 

@@ -134,6 +134,8 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
         printf("error, file name: %s already exists\n", file_name);
         return -1;
     }
+    if (dir == NULL)
+        return -1;
 
     size_t offset;
     status = find_free_entry(dir, &offset);
@@ -167,6 +169,8 @@ int dir_remove_entry(dir_t* dir, char* file_name, int mode){
     if(check_file_name(file_name) != 0)
         return -1;
     if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0)
+        return -1;
+    if(dir == NULL)
         return -1;
         
     dir_entry_t dir_entry;
