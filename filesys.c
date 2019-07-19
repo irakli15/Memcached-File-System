@@ -186,9 +186,29 @@ file_info_t* create_file (const char* path, uint64_t mode){
         inumber_t inumber = alloc_inumber();
         if(inode_create(inumber, 0, (int)mode) != 0)
             return NULL;
+
         inode = inode_open(inumber);
-        dir_add_entry(dir, file_name, inumber, (int)mode);
+        if(inode == NULL){
+            dir_close(dir);
+            return NULL;
+        }
+
+        int status = dir_add_entry(dir, file_name, inumber);
+        if(status != 0){
+            dir_close(dir);
+            inode_close(inode);
+            return NULL;
+        }
+
+        status = increase_nlink(inode);
+        if(status != 0){
+            dir_remove_entry(dir, file_name);
+            dir_close(dir);
+            inode_close(inode);
+            return NULL;
+        }
     }
+
     if(inode == NULL){
         dir_close(dir);
         return NULL;
@@ -199,24 +219,34 @@ file_info_t* create_file (const char* path, uint64_t mode){
     dir_close(dir);
     return fi;
 }
+
 int delete_file (const char* path){
     char* file_name;
+    int status = 0;
     dir_t* dir = follow_path(path, &file_name);
     if(dir == NULL)
         return -1;
+
     inumber_t inumber = dir_get_entry_inumber(dir, file_name);
-    int status = dir_remove_entry(dir, file_name, __S_IFREG);
+    inode_t* inode = inode_open(inumber);
+    if(inode == NULL)
+        return -1;
+    if(inode->d_inode.nlink == 1){
+        status = inode_delete(inode);
+    } else {
+        status = decrease_nlink(inode);
+        inode_close(inode);
+    }
+
     if(status != 0){
         dir_close(dir);
         return -1;
     }
-    
-    inode_t* inode = inode_open(inumber);
-    status = inode_delete(inode);
-    if(status != 0)
-        inode_close(inode);
+
+    status = dir_remove_entry(dir, file_name);
+
     dir_close(dir);
-    return 0;
+    return status;
 }
 
 int filesys_mkdir(const char* path){
@@ -231,10 +261,10 @@ int filesys_mkdir(const char* path){
         printf("couldn't create dir \n");
         return -1;
     }
-    status = dir_add_entry(f_dir, name, inumber, __S_IFDIR);
+    status = dir_add_entry(f_dir, name, inumber);
     dir_t* dir = dir_open(f_dir, name);
-    dir_add_entry(dir, ".", inumber, __S_IFDIR);
-    dir_add_entry(dir, "..", f_dir->inode->inumber, __S_IFDIR);
+    dir_add_entry(dir, ".", inumber);
+    dir_add_entry(dir, "..", f_dir->inode->inumber);
     dir_close(dir);
     dir_close(f_dir);
     return status;
@@ -300,7 +330,7 @@ int filesys_rmdir(const char* path){
         dir_close(dir);
         return status;
     }
-    status = dir_remove_entry(dir, dir_name, __S_IFDIR);
+    status = dir_remove_entry(dir, dir_name);
     dir_close(dir);
     return status;
 }

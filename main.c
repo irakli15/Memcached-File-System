@@ -162,7 +162,7 @@ int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 
 int fs_unlink(const char *path){
 	printf("delete: %s\n", path);
-	int status= delete_file(path);
+	int status = delete_file(path);
 	printf("status %d\n", status);
 	return status;
 }
@@ -187,7 +187,18 @@ int fs_link(const char* from, const char* to){
 	if(to_dir == NULL)
 		return -1;
 	printf("tofilename: %s\n", to_file_name);
-	int status = dir_add_entry(to_dir, to_file_name, inumber, __S_IFREG);
+	inode_t* inode = inode_open(inumber);
+	if(inode == NULL){
+		dir_close(to_dir);
+		return -1;
+	}
+	int status = increase_nlink(inode);
+	inode_close(inode);
+	if(status != 0){
+		dir_close(to_dir);
+		return status;
+	}
+	status = dir_add_entry(to_dir, to_file_name, inumber);
 	dir_close(to_dir);
 	return status;
 }
@@ -343,6 +354,8 @@ int fs_readlink (const char *path, char *buf, size_t size){
 
 	int write_length = read_file(f_info, buf, size);
 	buf[write_length] = 0;
+
+	close_file(f_info);
 
 	return 0;
 }

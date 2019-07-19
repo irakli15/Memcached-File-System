@@ -286,7 +286,7 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
 int inode_delete(inode_t* inode){
     if(inode == NULL)
         return -1;
-    if(inode->d_inode.nlink != 0)
+    if(inode->d_inode.nlink > 1)
         return -1;
 
     if(inode->open_count > 1)
@@ -310,6 +310,20 @@ size_t ilen(inode_t* inode){
 void inode_chmod(inode_t* inode, int mode){
     inode->d_inode.mode = mode;
     update_block(inode->inumber, &inode->d_inode);
+}
+
+int increase_nlink(inode_t* inode){
+    if(inode == NULL)
+        return -1;
+    inode->d_inode.nlink++;
+    return update_block(inode->inumber, &inode->d_inode);
+}
+
+int decrease_nlink(inode_t* inode){
+    if(inode == NULL)
+        return -1;
+    inode->d_inode.nlink--;
+    return update_block(inode->inumber, &inode->d_inode);
 }
 
 

@@ -61,12 +61,13 @@ int dir_create_root(){
     int status = inode_create(ROOT_DIR_INUMBER, 2*sizeof(dir_entry_t), __S_IFDIR);
     if(status != 0){
         printf("couldn't create root dir\n");
-        return -1;
+        return status;
     }
     dir_t* dir = dir_open_root(ROOT_DIR_INUMBER);
-    dir_add_entry(dir, ".", ROOT_DIR_INUMBER, __S_IFDIR);
+    status = dir_add_entry(dir, ".", ROOT_DIR_INUMBER);
 
     dir_close(dir);
+    return status;
 }
 
 dir_t* dir_open_root(){
@@ -126,7 +127,7 @@ int dir_read(dir_t* dir, char* file_name_buf){
     return 1;
 }
 
-int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
+int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber){
     if(check_file_name(file_name) != 0)
         return -1;
     int status = dir_entry_exists(dir, file_name);
@@ -152,20 +153,10 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber, int mode){
 
     if(status != 0)
         printf("couldn't add entry to dir\n");
-    
-    if(status == 0 && !S_ISDIR(mode)){
-        inode_t* inode = inode_open(inumber);
-        if(inode == NULL)
-            return -1;
-        inode->d_inode.nlink++;
-        status = update_block(inode->inumber, &inode->d_inode);
-        inode_close(inode);
-    }
-    
     return status;
 }
 
-int dir_remove_entry(dir_t* dir, char* file_name, int mode){
+int dir_remove_entry(dir_t* dir, char* file_name){
     if(check_file_name(file_name) != 0)
         return -1;
     if(strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0)
@@ -179,22 +170,12 @@ int dir_remove_entry(dir_t* dir, char* file_name, int mode){
     if (status != 0){
         return -1;
     }
-    inumber_t inumber = dir_entry.inumber;
     dir_entry.in_use = 0;
     status = inode_write(dir->inode, &dir_entry, offset, sizeof(dir_entry));
     if(status != 0){
         printf("failed to remove  %s\n", file_name);
         return -1;
     }
-
-    // mustn't open inode if it is dir, as it will already have been removed.
-    if(status == 0 && !S_ISDIR(mode)){
-        inode_t* inode = inode_open(inumber);
-        inode->d_inode.nlink--;
-        status = update_block(inode->inumber, &inode->d_inode);
-        inode_close(inode);
-    }
-
     return 0;
 }
 
