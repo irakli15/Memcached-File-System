@@ -145,6 +145,9 @@ int send_entry(inumber_t block, void* buf, size_t size, char* operation){
 
   if (strcmp(recv_buf, "STORED\r\n") == 0){
     return 0;
+  } else if(strcmp(recv_buf, "SERVER_ERROR out of memory storing object\r\n")){
+    printf("%s", recv_buf);
+    return -ENOMEM;    
   } else {
     printf("%s", recv_buf);
     return -1;

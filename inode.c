@@ -174,9 +174,8 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
             memset(temp_buf, 0, BLOCK_SIZE);
         }
 
-
         if(status != 0){
-            printf("error while writing %llu inumber\n", block_to_inumber(inode->inumber, block_index));
+            printf("error in writing while getting %llu inumber\n", block_to_inumber(inode->inumber, block_index));
             return -1;
         }
 
@@ -184,10 +183,12 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         if(inum == block_to_inumber(inode->inumber, block_index))
             inum = 0;
         if(new_block == 0)
-            update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+            status = update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
         else
-            add_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+            status = add_block(block_to_inumber(inode->inumber, block_index), temp_buf);
 
+        if(status != 0)
+            return status;
 
         if(offset + write_size > ilen(inode))
             inode->d_inode.length += (write_size - ilen(inode) + offset);

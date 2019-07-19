@@ -121,7 +121,7 @@ int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
     if (status != -1){
         return len;
     }
-    return -1;
+    return status;
 }
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
     return inode_read(fi->inode, buf, off, len);
@@ -132,7 +132,7 @@ int write_file (file_info_t* fi, void* buf, size_t len){
         fi->pos += len;
         return len;
     }
-    return -1;
+    return status;
 }
 int read_file (file_info_t* fi, void* buf, size_t len){
     int status = inode_read(fi->inode, buf, fi->pos, len);
