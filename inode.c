@@ -103,7 +103,7 @@ void inode_close(inode_t* inode){
 }
 
 int grow_inode(inode_t* inode, size_t final_size){
-    size_t block_count = bytes_to_nblock( final_size - ilen(inode));
+    size_t block_count = bytes_to_nblock( final_size - ilen(inode)) - 1;
     // exit(0);
     return alloc_blocks(&inode->d_inode, block_count);
 }
@@ -152,14 +152,16 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
 
         // if(offset + write_size >= ilen(inode)){
         if(bytes_to_nblock(offset + write_size) > bytes_to_nblock(ilen(inode))){
-            // status = grow_inode(inode, offset + write_size);
-            // #ifdef DEBUG_WRITE
-            //     // printf("adding %lu blocks\n", block_count);
-            // #endif
-            // if (status == -1){
-            //     printf("error while adding new block\n");
-            //     return -1;
-            // }
+            if(written == 0 && bytes_to_nblock(offset + write_size) > 1 + bytes_to_nblock(ilen(inode))){
+                status = grow_inode(inode, offset + write_size);
+                #ifdef DEBUG_WRITE
+                    // printf("adding %lu blocks\n", block_count);
+                #endif
+                if (status == -1){
+                    printf("error while adding new block\n");
+                    return -1;
+                }
+            }
             new_block = 1;
         }
 
