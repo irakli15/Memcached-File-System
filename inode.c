@@ -292,10 +292,12 @@ int inode_delete(inode_t* inode){
 
     if(inode->open_count > 1)
         return -1;
-    inumber_t max_index = block_to_inumber(inode->inumber, bytes_to_index(ilen(inode)));
+    // inumber_t max_index = block_to_inumber(inode->inumber, bytes_to_index(ilen(inode)));
+    size_t size = bytes_to_nblock(ilen(inode)) + 1;
     int status = 0;
-    for(inumber_t i = inode->inumber; i < max_index; i++){
-        status = remove_block(i);
+    inumber_t inum = inode->inumber;
+    for(inumber_t i = 0; i < size; i++){
+        status = remove_block(i + inum);
         if(status != 0){
             printf("error while removing %llu block\n", i);
         }
