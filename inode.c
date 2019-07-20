@@ -52,7 +52,7 @@ int inode_create(inumber_t inumber, size_t size, int mode){
     d_inode.length = size;
 
     status = add_block(inumber, &d_inode);
-    if (status != 0){
+    if (status < 0){
         return status;
     }
 
@@ -201,8 +201,9 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         offset += write_size;
     }
     status = update_block(inode->inumber, &inode->d_inode);
-
-  return status;
+    if (status < 0)
+        return status;
+  return written;
 }
 
 
@@ -225,7 +226,7 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
     while(size > 0){
         // if reading goes past inode length
         if(offset >= inode->d_inode.length){
-            memset(buf + read, 0, size);
+            // memset(buf + read, 0, size);
 
             #ifdef DEBUG_READ
                 printf("offset %lu\n", offset);
@@ -233,7 +234,7 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
                 printf("get out\n");
             #endif
 
-            return 0;
+            return read;
         }
 
 
@@ -245,26 +246,14 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
         // what is left to read, what is remaining in 
         // current block and what is remaining in inode
         read_size = left_in_block > size ? size : left_in_block;
-        left_in_inode = inode->d_inode.length - offset;
-        read_size = read_size > left_in_inode ? left_in_inode : read_size;
         
      
 
-        //debug
-        #ifdef DEBUG_READ
-            printf("block_index: %lu\n", block_index);
-            printf("off_in_block: %lu\n", off_in_block);
-            printf("left_in_block: %lu\n", left_in_block);
-            printf("left_in_inode: %lu\n", left_in_inode);
-            printf("left size: %lu\n", size);
-            printf("read_size: %lu\n", read_size);
-            printf("offset: %lu\n", offset);
-            printf("\n");
-        #endif
         if(inum == block_to_inumber(inode->inumber, block_index))
             memcpy(temp_buf, cache_buf, BLOCK_SIZE);
         else 
             status = get_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+            // printf("block NO: %llu\n", block_to_inumber(inode->inumber, block_index));
         if(status != 0){
             printf("error while reading %llu inumber\n", inode->inumber);
             return -1;
@@ -280,8 +269,19 @@ int inode_read(inode_t* inode, void* buf, size_t offset, size_t size){
         size -= read_size;
         read += read_size;
         offset += read_size;    
+        //debug
+        #ifdef DEBUG_READ
+            printf("block_index: %lu\n", block_index);
+            printf("off_in_block: %lu\n", off_in_block);
+            printf("left_in_block: %lu\n", left_in_block);
+            // printf("left_in_inode: %lu\n", left_in_inode);
+            printf("left size: %lu\n", size);
+            printf("read_size: %lu\n", read_size);
+            printf("offset: %lu\n", offset);
+            printf("\n");
+        #endif
     }
-  return 0;
+  return read;
 }
 
 int inode_delete(inode_t* inode){

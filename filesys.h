@@ -5,7 +5,6 @@
 
 struct file_info {
     inode_t* inode;
-    size_t pos;
     // struct list_elem elem;
 };
 
@@ -19,10 +18,6 @@ file_info_t* open_file (const char* path);
 void close_file (file_info_t* fi);
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
-int write_file (file_info_t* fi, void* buf, size_t len);
-int read_file (file_info_t* fi, void* buf, size_t len);
-void seek_file (file_info_t* fi, size_t new_pos);
-void reset_file_seek (file_info_t* fi);
 file_info_t* create_file (const char* path, uint64_t mode);
 int delete_file (const char* path);
 

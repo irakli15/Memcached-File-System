@@ -20,6 +20,7 @@
 
 
 #define FUSE_USE_VERSION 31
+#define HAVE_SETXATTR
 
 #include <fuse.h>
 #include <stdio.h>
@@ -135,8 +136,10 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		if(fh != NULL){
 			if(fh->type == 1)
 				stbuf->st_size = ((dir_t*)fh->ptr)->inode->d_inode.length;
-			else
+			else{
 				stbuf->st_size = ((file_info_t*)fh->ptr)->inode->d_inode.length;
+				printf("nblock %d\n", bytes_to_nblock(stbuf->st_size));
+			}
 		}
 		else
 			stbuf->st_size = get_file_size(path);
@@ -231,7 +234,7 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	printf("read\n");
 	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
-	return read_file(f_info, buf, size);
+	return read_file_at(f_info, buf, offset,size);
 }
 
 static int fs_write(const char* path, const char *buf, size_t size, off_t offset, 
@@ -241,7 +244,7 @@ static int fs_write(const char* path, const char *buf, size_t size, off_t offset
 	// printf("fi %d\n", fi->fh);
 	
 	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
-	return write_file(f_info, (void*)buf, size);
+	return write_file_at(f_info, (void*)buf, offset, size);
 }
 
 static int fs_mkdir(const char *path, mode_t mode)
@@ -337,8 +340,7 @@ int fs_symlink (const char *to, const char *from){
 	file_info_t* f_info = create_file(from, __S_IFLNK);
 	if(f_info == NULL)
 		return -1;
-
-	int status = write_file(f_info, (char*)to, strlen(to));
+	int status = write_file_at(f_info, (char*)to, 0, strlen(to));
 	close_file(f_info);
 
 	return 0;
@@ -352,10 +354,18 @@ int fs_readlink (const char *path, char *buf, size_t size){
 		return -1;
 	}
 
-	int write_length = read_file(f_info, buf, size);
+	int write_length = read_file_at(f_info, buf, 0, size);
 	buf[write_length] = 0;
 
 	close_file(f_info);
+
+	return 0;
+}
+int fs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags){
+	printf("%s\n", path);
+	printf("%s\n", name);
+	printf("%s\n", value);
+	printf("%lu\n", size);
 
 	return 0;
 }
@@ -380,7 +390,13 @@ static struct fuse_operations fs_oper = {
 	.fsyncdir  	= fs_fsyncdir,
 	.destroy	= fs_destroy,
 	.symlink	= fs_symlink,
-	.readlink	= fs_readlink
+	.readlink	= fs_readlink,
+	#ifdef HAVE_SETXATTR
+    .setxattr    = fs_setxattr,
+    // .getxattr    = prefix_getxattr,
+    // .listxattr   = prefix_listxattr,
+    // .removexattr = prefix_removexattr,
+	#endif
 };
 
 

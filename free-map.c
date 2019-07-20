@@ -47,7 +47,7 @@ int alloc_blocks(disk_inode* d_inode, size_t count){
     for(; i < count; i++){
         // printf("%llu\n", block_to_inumber(d_inode->inumber, i + start_block));
         status = add_block(block_to_inumber(d_inode->inumber, i + start_block), empty_buf);
-        if(status != 0)
+        if(status < 0)
             return -1;
     }
     return 0;

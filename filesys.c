@@ -95,12 +95,14 @@ file_info_t* open_file (const char* path){
         return NULL;
     
     inode_t* inode = inode_open(inumber);
-    if(inode == NULL)
+    if(inode == NULL){
+        dir_close(dir);
         return NULL;
+    }
 
     file_info_t* fi = malloc(sizeof(file_info_t));
     fi->inode = inode;
-    fi->pos  = 0;
+    dir_close(dir);
     return fi;
 }
 
@@ -111,39 +113,15 @@ void close_file (file_info_t* fi){
     }
 }
 
-void reset_file_seek (file_info_t* fi){
-    if(fi != NULL)
-        fi->pos = 0;
-}
-
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
     int status = inode_write(fi->inode, buf, off, len);
-    if (status != -1){
-        return len;
-    }
+    // if (status <){
+    //     return len;
+    // }
     return status;
 }
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len){
     return inode_read(fi->inode, buf, off, len);
-}
-int write_file (file_info_t* fi, void* buf, size_t len){
-    int status = inode_write(fi->inode, buf, fi->pos, len);
-    if (status != -1){
-        fi->pos += len;
-        return len;
-    }
-    return status;
-}
-int read_file (file_info_t* fi, void* buf, size_t len){
-    int status = inode_read(fi->inode, buf, fi->pos, len);
-    if (status != -1){
-        fi->pos += len;
-        return len;
-    }
-    return -1;
-}
-void seek_file (file_info_t* fi, size_t new_pos){
-    fi->pos = new_pos;
 }
 
 int getattr_inode (inode_t* inode){
@@ -194,14 +172,14 @@ file_info_t* create_file (const char* path, uint64_t mode){
         }
 
         int status = dir_add_entry(dir, file_name, inumber);
-        if(status != 0){
+        if(status < 0){
             dir_close(dir);
             inode_close(inode);
             return NULL;
         }
 
         status = increase_nlink(inode);
-        if(status != 0){
+        if(status < 0){
             dir_remove_entry(dir, file_name);
             dir_close(dir);
             inode_close(inode);
@@ -215,7 +193,6 @@ file_info_t* create_file (const char* path, uint64_t mode){
     }
     file_info_t* fi = malloc(sizeof(file_info_t));
     fi->inode=inode;
-    fi->pos = 0;
     dir_close(dir);
     return fi;
 }
@@ -238,7 +215,7 @@ int delete_file (const char* path){
         inode_close(inode);
     }
 
-    if(status != 0){
+    if(status < 0){
         dir_close(dir);
         return -1;
     }
@@ -257,7 +234,7 @@ int filesys_mkdir(const char* path){
 
     inumber_t inumber = alloc_inumber();
     int status = dir_create(inumber);
-    if (status != 0){
+    if (status < 0){
         printf("couldn't create dir \n");
         return -1;
     }
@@ -325,7 +302,7 @@ int filesys_rmdir(const char* path){
     }
     dir_t* dir_to_remove = dir_open(dir, dir_name);
     int status = dir_remove(dir_to_remove);
-    if(status != 0){
+    if(status < 0){
         dir_close(dir_to_remove);
         dir_close(dir);
         return status;

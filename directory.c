@@ -59,7 +59,7 @@ int dir_create(inumber_t inumber){
 
 int dir_create_root(){
     int status = inode_create(ROOT_DIR_INUMBER, 2*sizeof(dir_entry_t), __S_IFDIR);
-    if(status != 0){
+    if(status < 0){
         printf("couldn't create root dir\n");
         return status;
     }
@@ -83,8 +83,10 @@ int dir_remove(dir_t* dir){
     if(dir->inode->inumber == ROOT_DIR_INUMBER)
         return -1;
         
-    if(dir->inode->open_count > 1)
+    if(dir->inode->open_count > 1){
+        printf("open count %d\n", dir->inode->open_count);
         return -EBUSY;
+    }
     
     char file_name[NAME_MAX_LEN];
     while(dir_read(dir, file_name) == 0){
@@ -113,7 +115,7 @@ int dir_read(dir_t* dir, char* file_name_buf){
         status = inode_read(dir->inode, &entry, pos,sizeof(dir_entry_t));
         pos += sizeof(dir_entry_t);
         dir->pos = pos;
-        if(status != 0){
+        if(status < 0){
             printf("error while reading from dir\n");
             return -1;
         }
@@ -140,7 +142,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber){
 
     size_t offset;
     status = find_free_entry(dir, &offset);
-    if(status != 0){
+    if(status < 0){
         offset = ilen(dir->inode);
     }
     dir_entry_t dir_entry;
@@ -151,7 +153,7 @@ int dir_add_entry(dir_t* dir, char* file_name, inumber_t inumber){
 
     status = inode_write(dir->inode, &dir_entry, offset, sizeof(dir_entry_t));
 
-    if(status != 0)
+    if(status < 0)
         printf("couldn't add entry to dir\n");
     return status;
 }
@@ -167,12 +169,12 @@ int dir_remove_entry(dir_t* dir, char* file_name){
     dir_entry_t dir_entry;
     size_t offset;
     int status = dir_lookup_entry(dir, file_name, &offset, &dir_entry);
-    if (status != 0){
+    if (status < 0){
         return -1;
     }
     dir_entry.in_use = 0;
     status = inode_write(dir->inode, &dir_entry, offset, sizeof(dir_entry));
-    if(status != 0){
+    if(status < 0){
         printf("failed to remove  %s\n", file_name);
         return -1;
     }
@@ -190,7 +192,7 @@ int dir_lookup_entry(dir_t* dir, char* file_name, size_t* offset, dir_entry_t* d
     int status = 0;
     while(pos + sizeof(dir_entry_t) <= ilen(dir->inode)){
         status = inode_read(dir->inode, &entry, pos, sizeof(dir_entry_t));
-        if(status != 0){
+        if(status < 0){
             printf("error reading dir w/inumber:%llu\n", dir->inode->inumber);
             return -1;
         }
@@ -231,7 +233,7 @@ int find_free_entry(dir_t* dir, size_t* offset){
     int status = 0;
     while(pos + sizeof(dir_entry_t) <= ilen(dir->inode)){
         status = inode_read(dir->inode, &entry, pos, sizeof(dir_entry_t));
-        if(status != 0){
+        if(status < 0){
             printf("error reading dir w/inumber:%llu\n", dir->inode->inumber);
             return -1;
         }
