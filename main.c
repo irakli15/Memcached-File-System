@@ -370,13 +370,17 @@ int fs_setxattr(const char* path, const char* name, const char* value, size_t si
 
 int fs_getxattr(const char* path, const char* name, char* value, size_t size){
 	// printf("get\n");
+	if(path == NULL || name == NULL || value == NULL)
+		return 0;
+	if(strcmp(path, "/") == 0)
+		return 0;
 	file_info_t *f_info = open_file(path);
 	if(f_info == NULL)
-		return -1;
+		return 0;
 	xattr_t *xattr = inode_get_xattr(f_info->inode, name);
 	if(xattr == NULL){
 		close_file(f_info);
-		return -1;
+		return 0;
 	}
 	if(size > 0 && value != NULL){
 		memcpy(value, xattr->value, xattr->size);
@@ -391,7 +395,7 @@ int fs_listxattr(const char* path, char* list, size_t size){
 	file_info_t *f_info = open_file(path);
 	int status = 0;
 	if(f_info == NULL)
-		return -1;
+		return 0;
 	status = inode_xattr_list_len(f_info->inode);
 	if (size != 0){
 		inode_xattr_list(f_info->inode, list);
