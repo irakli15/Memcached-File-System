@@ -84,7 +84,6 @@ int dir_remove(dir_t* dir){
         return -1;
         
     if(dir->inode->open_count > 1){
-        printf("open count %d\n", dir->inode->open_count);
         return -EBUSY;
     }
     

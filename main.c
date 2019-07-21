@@ -138,15 +138,11 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 				stbuf->st_size = ((dir_t*)fh->ptr)->inode->d_inode.length;
 			else{
 				stbuf->st_size = ((file_info_t*)fh->ptr)->inode->d_inode.length;
-				printf("nblock %d\n", bytes_to_nblock(stbuf->st_size));
 			}
 		}
 		else
 			stbuf->st_size = get_file_size(path);
-	} 
-	// else
-	// 	res = -ENOENT;
-
+	}
 	return 0;
 }
 
@@ -362,13 +358,66 @@ int fs_readlink (const char *path, char *buf, size_t size){
 	return 0;
 }
 int fs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags){
-	printf("%s\n", path);
-	printf("%s\n", name);
-	printf("%s\n", value);
-	printf("%lu\n", size);
-
+	if(path == NULL || name == NULL || value == NULL)
+		return -1;
+	file_info_t *f_info = open_file(path);
+	if(f_info == NULL)
+		return -1;
+	int status = inode_set_xattr(f_info->inode, name, value, size);
+	close_file(f_info);
 	return 0;
 }
+
+int fs_getxattr(const char* path, const char* name, char* value, size_t size){
+	// printf("get\n");
+	file_info_t *f_info = open_file(path);
+	if(f_info == NULL)
+		return -1;
+	xattr_t *xattr = inode_get_xattr(f_info->inode, name);
+	if(xattr == NULL){
+		close_file(f_info);
+		return -1;
+	}
+	if(size > 0 && value != NULL){
+		memcpy(value, xattr->value, xattr->size);
+	}
+	// printf("get %s\n", name);
+	int status = (int)xattr->size;
+	close_file(f_info);
+	return status;
+}
+
+int fs_listxattr(const char* path, char* list, size_t size){
+	file_info_t *f_info = open_file(path);
+	int status = 0;
+	if(f_info == NULL)
+		return -1;
+	status = inode_xattr_list_len(f_info->inode);
+	if (size != 0){
+		inode_xattr_list(f_info->inode, list);
+		// for(int i = 0; i < status; i++)
+		// 	printf("%c ", list[i]);
+		// printf("\n");
+	}
+	// printf("%lu\n", status);
+	// printf("%lu\n", size);
+	
+	close_file(f_info);
+	return status;
+}
+
+int fs_removexattr(const char *path, const char *name){
+	if(path == NULL || name == NULL)
+		return -1;
+	file_info_t *f_info = open_file(path);
+	if(f_info == NULL)
+		return -1;
+	int status = inode_remove_xattr(f_info->inode, name);
+	close_file(f_info);
+	return status;	
+}
+
+
 
 
 
@@ -393,9 +442,9 @@ static struct fuse_operations fs_oper = {
 	.readlink	= fs_readlink,
 	#ifdef HAVE_SETXATTR
     .setxattr    = fs_setxattr,
-    // .getxattr    = prefix_getxattr,
-    // .listxattr   = prefix_listxattr,
-    // .removexattr = prefix_removexattr,
+    .getxattr    = fs_getxattr,
+    .listxattr   = fs_listxattr,
+    .removexattr = fs_removexattr
 	#endif
 };
 
@@ -413,7 +462,9 @@ static void show_help(const char *progname)
 }
 
 int main(int argc, char *argv[])
-{ fuse_get_context();
+{ 
+	
+	fuse_get_context();
     // filesys_mkdir("/hi");
     // filesys_mkdir("/hi/ho");
 	// filesys_mkdir("/hey");

@@ -5,7 +5,10 @@
 #include <stdlib.h>
 
 #define BLOCK_SIZE 4096
-#define INODE_PAD_SIZE BLOCK_SIZE - 36
+#define LEFT_OVER (BLOCK_SIZE - 36)
+
+#define XATTR_COUNT (LEFT_OVER/172)
+#define INODE_PAD_SIZE (LEFT_OVER - (XATTR_COUNT*172))
 
 #define FREE_MAP_INUMBER 0
 #define ROOT_DIR_INUMBER 4294967296 // 1 << 4*8
@@ -29,12 +32,19 @@ typedef size_t block_t;
    * 2^32
    * 
 */ 
+struct xattr {
+  char key[43];
+  char value[128];
+  char size; //is it in use?
+};
+typedef struct xattr xattr_t;
 
 struct disk_inode{
   inumber_t inumber; //8
   size_t length; //8
   int mode; //4 
   size_t nlink; // 8
+  xattr_t xattrs[XATTR_COUNT];
   char unused[INODE_PAD_SIZE];
 };
 typedef struct disk_inode disk_inode;
@@ -46,6 +56,8 @@ struct inode{
   disk_inode d_inode;
 };
 typedef struct inode inode_t;
+
+
 
 
 void init_inode();
@@ -65,4 +77,10 @@ void inode_chmod(inode_t* inode, int mode);
 
 int increase_nlink(inode_t* inode);
 int decrease_nlink(inode_t* inode);
+
+int inode_set_xattr(inode_t* inode, const char* key, const char* value, size_t size);
+int inode_remove_xattr(inode_t* inode, const char* key);
+xattr_t* inode_get_xattr(inode_t* inode, const char* key);
+size_t inode_xattr_list_len(inode_t* inode);
+void inode_xattr_list(inode_t* inode, char* list);
 #endif

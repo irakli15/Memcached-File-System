@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <errno.h>
 
 // #define DEBUG_READ
 //  #define DEBUG_WRITE
@@ -45,6 +46,7 @@ int inode_create(inumber_t inumber, size_t size, int mode){
     d_inode.length = 0;
     d_inode.mode = mode;
     d_inode.nlink = 0;
+    memset(d_inode.xattrs, 0, XATTR_COUNT*sizeof(xattr_t));
     int status = alloc_blocks(&d_inode, block_count);
     if(status != 0)
         return status;
@@ -180,12 +182,15 @@ int inode_write(inode_t* inode, void* buf, size_t offset, size_t size){
         }
 
         memcpy(temp_buf + off_in_block, buf + written, write_size);
-        if(inum == block_to_inumber(inode->inumber, block_index))
-            inum = 0;
+        
         if(new_block == 0)
             status = update_block(block_to_inumber(inode->inumber, block_index), temp_buf);
         else
             status = add_block(block_to_inumber(inode->inumber, block_index), temp_buf);
+
+        if(inum == block_to_inumber(inode->inumber, block_index))
+            inum = 0;
+            // memcpy(cache_buf, temp_buf, BLOCK_SIZE);
 
         if(status != 0)
             return status;
@@ -327,6 +332,106 @@ int decrease_nlink(inode_t* inode){
         return -1;
     inode->d_inode.nlink--;
     return update_block(inode->inumber, &inode->d_inode);
+}
+
+xattr_t* inode_get_xattr(inode_t* inode, const char* key){
+    if(inode == NULL || key == NULL || strlen(key) == 0)
+        return NULL;
+    xattr_t *xattrs = inode->d_inode.xattrs;
+    for(int i = 0; i < XATTR_COUNT; i++){
+        if(xattrs[i].size != 0 && strcmp(xattrs[i].key, key) == 0)
+            return xattrs + i;
+    }
+    return NULL;
+}
+
+int inode_set_xattr(inode_t* inode, const char* key, const char* value, size_t size){
+    if(size > 128 || size == 0)
+        return -1;
+
+    if(inode == NULL || key == NULL || strlen(key) == 0 || 
+        value == NULL || strlen(value) == 0)
+        return -1;
+    xattr_t *xattrs = inode->d_inode.xattrs;
+    int free = -1;
+    int found = -1;
+    for(int i = 0; i < XATTR_COUNT; i++){
+        if(strcmp(xattrs[i].key, key) == 0  && xattrs[i].size != 0){
+            found = i;
+            break;
+        }
+        if(free == -1 && xattrs[i].size == 0){
+            free = i;
+        }
+    }
+    int to_use;
+    if(found != -1){
+        to_use = found;
+    } else if (free != -1){
+        to_use = free;
+    } else{
+        return -ENOMEM;
+    }
+    xattr_t saved_xattr;
+    memcpy(&saved_xattr, &xattrs[to_use], sizeof(xattr_t));
+
+    strcpy(xattrs[to_use].key, key);
+    memcpy(xattrs[to_use].value, value, size);
+    xattrs[to_use].size = (char)size;
+    int status = update_block(inode->inumber, &inode->d_inode);
+    if(status < 0){
+        memcpy(&xattrs[to_use], &saved_xattr, sizeof(xattr_t));
+        return status;
+    }
+    return status;
+}
+
+int inode_remove_xattr(inode_t* inode, const char* key){
+    if(inode == NULL || key == NULL || strlen(key) == 0)
+        return -1;
+    xattr_t *xattrs = inode->d_inode.xattrs;
+    for(int i = 0; i < XATTR_COUNT; i++){
+        if(xattrs[i].size != 0)
+        if(strcmp(xattrs[i].key, key) == 0){
+            int saved_size = xattrs[i].size;
+            xattrs[i].size = 0;
+            int status = update_block(inode->inumber, &inode->d_inode);
+            if(status < 0){
+                xattrs[i].size = saved_size;
+                return -1;
+            }
+            return 0;
+        }
+    }
+    return 0;
+}
+
+size_t inode_xattr_list_len(inode_t* inode){
+    if(inode == NULL)
+        return 0;
+    size_t len = 0;
+    xattr_t *xattrs = inode->d_inode.xattrs;
+    for(int i = 0; i < XATTR_COUNT; i++){
+        if(xattrs[i].size != 0)
+            len += (strlen(xattrs[i].key) + 1);
+    }
+    return len;
+}
+
+void inode_xattr_list(inode_t* inode, char* list){
+    if(inode == NULL)
+        return;
+    xattr_t *xattrs = inode->d_inode.xattrs;
+    char* temp = list;
+    for(int i = 0; i < XATTR_COUNT; i++){
+        if(xattrs[i].size != 0){
+            memcpy(temp, xattrs[i].key, strlen(xattrs[i].key));
+            temp += strlen(xattrs[i].key);
+            temp[0] = 0;
+            temp += 1;
+        }
+    }
+    // list[strlen(list) ] = 0;
 }
 
 
