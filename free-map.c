@@ -56,6 +56,10 @@ int create_freemap_inode(){
 inumber_t alloc_inumber(){
     inumber_t res = succesive_inode_inumber << 4*8;
     succesive_inode_inumber++;
+    char buf[BLOCK_SIZE];
+    memset(buf, 0, BLOCK_SIZE);
+    sprintf(buf, "%llu", succesive_inode_inumber);
+    inode_write(freemap_inode, buf, 0, BLOCK_SIZE);
     return res;
 }
 
@@ -88,6 +92,7 @@ void free_block(inumber_t block){
 
 void free_map_finish(){
     char buf[BLOCK_SIZE];
+    memset(buf, 0, BLOCK_SIZE);
     sprintf(buf, "%llu", succesive_inode_inumber);
     inode_write(freemap_inode, buf, 0, BLOCK_SIZE);
     inode_close(freemap_inode);
