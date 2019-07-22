@@ -4,15 +4,13 @@
 #include "memcached_client.h"
 #include <stdio.h>
 #include <sys/stat.h>
-
+#include <errno.h>
 #include <assert.h>
 
 // TODO: retrieve filesys files from memcached.
 void filesys_init(){
     init_connection();
     init_inode();
-    // flush_all();
-   
     if(open_freemap_inode() < 0){
         flush_all();
         create_freemap_inode();
@@ -163,32 +161,37 @@ int get_file_size(const char* path){
 
 
 
-file_info_t* create_file (const char* path, uint64_t mode){
+int create_file (const char* path, uint64_t mode, file_info_t **f_info){
     char* file_name;
     dir_t* dir = follow_path(path, &file_name);
     inode_t* inode;
 
     if(dir == NULL)
-        return NULL;
+        return -1;
+
+    if(check_permission(dir->inode, WR)){
+        dir_close(dir);
+        return -EACCES;
+    }
     // readdir_full(dir);
     if(dir_entry_exists(dir, file_name) == 0) {
         inode = inode_open(dir_get_entry_inumber(dir, file_name));
     }else{
         inumber_t inumber = alloc_inumber();
         if(inode_create(inumber, 0, (int)mode) != 0)
-            return NULL;
+            return -1;
 
         inode = inode_open(inumber);
         if(inode == NULL){
             dir_close(dir);
-            return NULL;
+            return -1;
         }
 
         int status = dir_add_entry(dir, file_name, inumber);
         if(status < 0){
             dir_close(dir);
             inode_close(inode);
-            return NULL;
+            return -1;
         }
 
         status = increase_nlink(inode);
@@ -196,18 +199,20 @@ file_info_t* create_file (const char* path, uint64_t mode){
             dir_remove_entry(dir, file_name);
             dir_close(dir);
             inode_close(inode);
-            return NULL;
+            return -1;
         }
     }
 
     if(inode == NULL){
         dir_close(dir);
-        return NULL;
+        return -1;
     }
+
     file_info_t* fi = malloc(sizeof(file_info_t));
     fi->inode=inode;
     dir_close(dir);
-    return fi;
+    *f_info = fi;
+    return 0;
 }
 
 int delete_file (const char* path){
@@ -217,10 +222,22 @@ int delete_file (const char* path){
     if(dir == NULL)
         return -1;
 
+    if(check_permission(dir->inode, WR)){
+        dir_close(dir);
+        return -EACCES;
+    }
+
     inumber_t inumber = dir_get_entry_inumber(dir, file_name);
     inode_t* inode = inode_open(inumber);
     if(inode == NULL)
         return -1;
+
+    if(check_permission(inode, WR)){
+        dir_close(dir);
+        inode_close(inode);
+        return -EACCES;
+    }
+
     if(inode->d_inode.nlink == 1){
         status = inode_delete(inode);
     } else {
@@ -244,6 +261,11 @@ int filesys_mkdir(const char* path, int mode){
     dir_t* f_dir = follow_path(path, &name);
     if(f_dir == NULL)
         return -1;
+
+    if(check_permission(f_dir->inode, WR)){
+        dir_close(f_dir);
+        return -EACCES;
+    }
 
     inumber_t inumber = alloc_inumber();
     int status = dir_create(inumber, mode);
@@ -309,11 +331,26 @@ int filesys_rmdir(const char* path){
     if(dir == NULL){
         return -1;
     }
+    if(check_permission(dir->inode, WR)){
+        dir_close(dir);
+        return -EACCES;
+    }
     if(!S_ISDIR(dir_get_entry_mode(dir, dir_name))){
         dir_close(dir);
         return -1;
     }
     dir_t* dir_to_remove = dir_open(dir, dir_name);
+    if(dir_to_remove == NULL){
+        dir_close(dir);
+        return -1;
+    }
+
+     if(check_permission(dir_to_remove->inode, WR)){
+        dir_close(dir);
+        dir_close(dir_to_remove);
+        return -EACCES;
+    }
+
     int status = dir_remove(dir_to_remove);
     if(status < 0){
         dir_close(dir_to_remove);

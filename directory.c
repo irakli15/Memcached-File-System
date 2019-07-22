@@ -54,7 +54,7 @@ void dir_close(dir_t* dir){
 
 
 int dir_create(inumber_t inumber, int mode){
-    return inode_create(inumber, 0, __S_IFDIR | 755);//__S_IREAD | __S_IWRITE | __S_IEXEC);
+    return inode_create(inumber, 0, __S_IFDIR | mode);//__S_IREAD | __S_IWRITE | __S_IEXEC);
 }
 
 int dir_create_root(){

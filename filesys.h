@@ -7,6 +7,8 @@
 #define RD      "r00"
 #define WR      "0w0"
 #define EX      "00x"
+#define RDEX    "r0x"
+#define WREX    "0wx"
 #define RDWR    "rw0"
 #define RDWREX  "rwx"
 
@@ -26,7 +28,7 @@ file_info_t* open_file (const char* path);
 void close_file (file_info_t* fi);
 int write_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
 int read_file_at (file_info_t* fi, void* buf, size_t off, size_t len);
-file_info_t* create_file (const char* path, uint64_t mode);
+int create_file (const char* path, uint64_t mode, file_info_t **f_info);
 int delete_file (const char* path);
 
 int getattr_inode (inode_t* inode);

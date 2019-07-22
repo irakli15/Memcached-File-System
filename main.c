@@ -111,10 +111,8 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		inode_t *inode = get_inode(path, fi);
 		if(inode == NULL)
 			return -ENOENT;
-		int mode;
-		mode = inode->d_inode.mode;
 
-		stbuf->st_mode = mode;
+		stbuf->st_mode = inode->d_inode.mode;
 		stbuf->st_nlink = inode->d_inode.nlink;
 		stbuf->st_size =inode->d_inode.length;
 		stbuf->st_uid = inode->d_inode.uid;
@@ -128,14 +126,15 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 
 int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	printf("create: %s\n", path);
-	file_info_t* f_info = create_file(path, mode);
-	if(f_info == NULL)
-		return -1;
+	file_info_t* f_info;
+	int status = create_file(path, mode, &f_info);
+	if(status < 0)
+		return status;
 	file_handle_t* fh = malloc(sizeof(file_handle_t));
 	fh->ptr = f_info;
 	fh->type = 0;
 	fi->fh = (uint64_t)fh;
-	fi->flags |= O_RDWR;
+	fi->flags = mode;
 	return 0;
 }
 
@@ -143,7 +142,9 @@ int fs_unlink(const char *path){
 	printf("delete: %s\n", path);
 	int status = delete_file(path);
 	printf("status %d\n", status);
-	return status;
+	if (status < 0)
+		return status;
+	return 0;
 }
 
 int fs_link(const char* from, const char* to){
@@ -234,21 +235,17 @@ static int fs_write(const char* path, const char *buf, size_t size, off_t offset
 
 static int fs_mkdir(const char *path, mode_t mode)
 {
-	int res;
+	int status = 0;
 	printf("mkdir\n");
 	// printf("%s\n", path);
-	res = filesys_mkdir(path, 0);
-	if (res == -1)
-		return -errno;
-	
-	// readdir_full(filesys_opendir("/hi"));
-
+	status = filesys_mkdir(path, mode);
+	if(status < 0)
+		return status;
 	return 0;
 }
 
 static int fs_rmdir(const char *path){
 	printf("rmdir path: %s\n", path);
-	int mode = getattr_path(path);
 	return filesys_rmdir(path);
 }
 
@@ -323,12 +320,15 @@ int fs_symlink (const char *to, const char *from){
 	printf("sym to: %s\n", to);
 	printf("sym from: %s\n", from);
 
-	file_info_t* f_info = create_file(from, __S_IFLNK);
-	if(f_info == NULL)
-		return -1;
-	int status = write_file_at(f_info, (char*)to, 0, strlen(to));
+	file_info_t* f_info;
+	int status = create_file(from, __S_IFLNK | 0666, &f_info);
+	if(status < 0)
+		return status;
+	status = write_file_at(f_info, (char*)to, 0, strlen(to));
 	close_file(f_info);
 
+	if(status < 0)
+		return -1;
 	return 0;
 
 }
@@ -540,8 +540,6 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[])
 { 
-	// printf("%d\n", sizeof(gid_t));
-	// return 0;
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
