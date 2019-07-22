@@ -434,7 +434,6 @@ int fs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi){
 
 
 
-
 static struct fuse_operations fs_oper = {
 	.init       = fs_init,
 	.getattr	= fs_getattr,
@@ -479,14 +478,6 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[])
 { 
-	printf("%lu\n",sizeof(dir_entry_t));
-	return 0;
-	fuse_get_context();
-    // filesys_mkdir("/hi");
-    // filesys_mkdir("/hi/ho");
-	// filesys_mkdir("/hey");
-
-	// create_file("/file", __S_IFREG);
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
