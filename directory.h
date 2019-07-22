@@ -24,7 +24,7 @@ dir_t* dir_open(dir_t* dir, char* dir_name);
 dir_t* dir_reopen(dir_t* dir);
 void dir_close(dir_t* dir);
 
-int dir_create(inumber_t inumber);
+int dir_create(inumber_t inumber, int mode);
 int dir_remove(dir_t* dir);
 
 int dir_read(dir_t* dir, char* file_name_buf);

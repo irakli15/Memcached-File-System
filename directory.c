@@ -53,12 +53,12 @@ void dir_close(dir_t* dir){
 }
 
 
-int dir_create(inumber_t inumber){
-    return inode_create(inumber, 0, __S_IFDIR);
+int dir_create(inumber_t inumber, int mode){
+    return inode_create(inumber, 0, __S_IFDIR | 755);//__S_IREAD | __S_IWRITE | __S_IEXEC);
 }
 
 int dir_create_root(){
-    int status = inode_create(ROOT_DIR_INUMBER, 2*sizeof(dir_entry_t), __S_IFDIR);
+    int status = inode_create(ROOT_DIR_INUMBER, 2*sizeof(dir_entry_t), __S_IFDIR | 0777);
     if(status < 0){
         printf("couldn't create root dir\n");
         return status;

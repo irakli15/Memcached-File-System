@@ -11,7 +11,7 @@
 void filesys_init(){
     init_connection();
     init_inode();
-    // flush_all();
+    flush_all();
    
     if(open_freemap_inode() < 0){
         flush_all();
@@ -239,14 +239,14 @@ int delete_file (const char* path){
     return status;
 }
 
-int filesys_mkdir(const char* path){
+int filesys_mkdir(const char* path, int mode){
     char *name;
     dir_t* f_dir = follow_path(path, &name);
     if(f_dir == NULL)
         return -1;
 
     inumber_t inumber = alloc_inumber();
-    int status = dir_create(inumber);
+    int status = dir_create(inumber, mode);
     if (status < 0){
         printf("couldn't create dir \n");
         return -1;

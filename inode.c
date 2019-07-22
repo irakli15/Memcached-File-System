@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <errno.h>
+#include <unistd.h>
 
 // #define DEBUG_READ
 //  #define DEBUG_WRITE
@@ -46,18 +47,18 @@ int inode_create(inumber_t inumber, size_t size, int mode){
     d_inode.length = 0;
     d_inode.mode = mode;
     d_inode.nlink = 0;
+    d_inode.uid = getuid();
+    d_inode.gid = getgid();
     memset(d_inode.xattrs, 0, XATTR_COUNT*sizeof(xattr_t));
     int status = alloc_blocks(&d_inode, block_count);
     if(status != 0)
         return status;
-
     d_inode.length = size;
 
     status = add_block(inumber, &d_inode);
     if (status < 0){
         return status;
     }
-
     return 0;
 }
 

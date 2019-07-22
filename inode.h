@@ -3,9 +3,10 @@
 
 #include "list.h"
 #include <stdlib.h>
+#include <unistd.h>
 
 #define BLOCK_SIZE 4096
-#define LEFT_OVER (BLOCK_SIZE - 36)
+#define LEFT_OVER (BLOCK_SIZE - 44)
 
 #define XATTR_COUNT (LEFT_OVER/172)
 #define INODE_PAD_SIZE (LEFT_OVER - (XATTR_COUNT*172))
@@ -44,6 +45,8 @@ struct disk_inode{
   size_t length; //8
   int mode; //4 
   size_t nlink; // 8
+  uid_t uid; //4
+  gid_t gid; //4
   xattr_t xattrs[XATTR_COUNT];
   char unused[INODE_PAD_SIZE];
 };

@@ -50,6 +50,8 @@ struct file_handle {
 
 typedef struct file_handle file_handle_t;
 
+inode_t* get_inode(const char* path, struct fuse_file_info *fi);
+
 /*
  * Command line options
  *
@@ -106,43 +108,20 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		stbuf->st_mode = S_IFDIR | 0777; //0755;
 		stbuf->st_nlink = 2;
 	} else {
-		// stbuf->st_mode = S_IFREG | 0444;
-		// stbuf->st_nlink = 1;
-		// stbuf->st_size = strlen(options.contents);
-
-		file_handle_t* fh = NULL;
-		if(fi != NULL)
-			fh = (file_handle_t*)fi->fh;
-
-
-		int mode;
-		if(fh == NULL) 
-			mode = getattr_path(path);
-		else{
-			if(fh->type == 1)
-				mode = ((dir_t*)fh->ptr)->inode->d_inode.mode;
-			else
-				mode = ((file_info_t*)fh->ptr)->inode->d_inode.mode;
-
-
-		}
-		if(mode == -1)
+		inode_t *inode = get_inode(path, fi);
+		if(inode == NULL)
 			return -ENOENT;
-		// dir_t* dir = dir_open(cur_dir, path + 1);
-		// printf("%d mine\n", dir_get_entry_mode(cur_dir, path+1) | 0755);
-		// printf("%d not mine\n", S_IFDIR | 0755);
+		int mode;
+		mode = inode->d_inode.mode;
 
 		stbuf->st_mode = mode;
-		stbuf->st_nlink = 1;
-		if(fh != NULL){
-			if(fh->type == 1)
-				stbuf->st_size = ((dir_t*)fh->ptr)->inode->d_inode.length;
-			else{
-				stbuf->st_size = ((file_info_t*)fh->ptr)->inode->d_inode.length;
-			}
-		}
-		else
-			stbuf->st_size = get_file_size(path);
+		stbuf->st_nlink = inode->d_inode.nlink;
+		stbuf->st_size =inode->d_inode.length;
+		stbuf->st_uid = inode->d_inode.uid;
+		stbuf->st_gid = inode->d_inode.gid;
+
+		if(fi == NULL)
+			inode_close(inode);
 	}
 	return 0;
 }
@@ -271,7 +250,7 @@ static int fs_mkdir(const char *path, mode_t mode)
 	int res;
 	printf("mkdir\n");
 	// printf("%s\n", path);
-	res = filesys_mkdir(path);
+	res = filesys_mkdir(path, 0);
 	if (res == -1)
 		return -errno;
 	
@@ -455,8 +434,7 @@ int fs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi){
 	return 0;
 }
 
-
-int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
+inode_t* get_inode(const char* path, struct fuse_file_info *fi){
 	file_handle_t* fh = NULL;
 	if(fi != NULL)
 		fh = (file_handle_t*)fi->fh;
@@ -465,7 +443,7 @@ int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
 	if(fh == NULL){
 		int mode = getattr_path(path);
 		if (mode < 0)
-			return -1;
+			return NULL;
 		inumber_t inumber;
 
 		if(S_ISDIR(mode)){
@@ -478,7 +456,7 @@ int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
 		}else{
 			file_info_t *fi = open_file(path);
 			if(fi == NULL)
-				return -1;
+				return NULL;
 			inumber = fi->inode->inumber;
 			close_file(fi);
 		}
@@ -491,12 +469,33 @@ int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
 		else
 			inode = ((file_info_t*)fh->ptr)->inode;
 	}
+	return inode;
+}
+
+int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
+	inode_t *inode = get_inode(path, fi);
+	if(inode == NULL)
+		return -1;
 	int new_mode = mode;
 	int status = inode_chmod(inode, new_mode);
 	if(fi == NULL)
 		inode_close(inode);
 	else
 		fi->flags = new_mode;
+	return 0;
+}
+
+
+int fs_chown(const char* path, uid_t uid, gid_t gid, struct fuse_file_info *fi){
+	inode_t* inode = get_inode(path, fi);
+	if(inode == NULL)
+		return -1;
+	inode->d_inode.uid = uid;
+	inode->d_inode.gid = gid;
+	update_block(inode->inumber, &inode->d_inode);
+	if(fi == NULL)
+		inode_close(inode);
+	
 	return 0;
 }
 
@@ -523,6 +522,7 @@ static struct fuse_operations fs_oper = {
 	.fsync		= fs_fsync,
 	.flush		= fs_flush,
 	.chmod		= fs_chmod,
+	.chown		= fs_chown,
 	#ifdef HAVE_SETXATTR
     .setxattr    = fs_setxattr,
     .getxattr    = fs_getxattr,
@@ -546,6 +546,8 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[])
 { 
+	// printf("%d\n", sizeof(gid_t));
+	// return 0;
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
