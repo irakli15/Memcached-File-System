@@ -11,20 +11,33 @@
 void filesys_init(){
     init_connection();
     init_inode();
-    init_free_map();
-
-    flush_all();//******************temporary
+    // flush_all();
+   
+    if(open_freemap_inode() < 0){
+        flush_all();
+        create_freemap_inode();
+        init_free_map();
+        dir_create_root();
+        cur_dir = dir_open_root();
+        return;
+    }
 
     cur_dir = dir_open_root();
     if(cur_dir == NULL){
         flush_all();
+        create_freemap_inode();
+        init_free_map();
         dir_create_root();
         cur_dir = dir_open_root();
+        return;
     }
+    init_free_map();
+
 }
 
 void filesys_finish(){
     dir_close(cur_dir);
+    free_map_finish();
     close_connection();
 }
 
