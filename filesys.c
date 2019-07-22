@@ -342,3 +342,41 @@ char* get_last_part(const char* path){
     }
     return NULL;
 }
+
+
+int check_permission(inode_t* inode, char* perms){
+    int perm = 0;
+
+    if(getuid() == inode->d_inode.uid){
+        printf("usr\n");
+        if(perms[0] == 'r')
+            perm |= S_IRUSR;
+        if(perms[1] == 'w')
+            perm |= S_IWUSR;
+        if(perms[2] == 'x')
+            perm |= S_IXUSR;
+        printf("%d\n", perm);
+        return (perm & inode->d_inode.mode) == 0;
+    }
+
+    if(getgid() == inode->d_inode.gid){
+        printf("grp\n");
+        if(perms[0] == 'r')
+            perm |= S_IRGRP;
+        if(perms[1] == 'w')
+            perm |= S_IWGRP;
+        if(perms[2] == 'x')
+            perm |= S_IXGRP;
+        return (perm & inode->d_inode.mode) == 0;
+    }
+
+    printf("oth\n");
+    
+    if(perms[0] == 'r')
+        perm |= S_IROTH;
+    if(perms[1] == 'w')
+        perm |= S_IWOTH;
+    if(perms[2] == 'x')
+        perm |= S_IXOTH;
+    return (perm & inode->d_inode.mode) == 0;
+}

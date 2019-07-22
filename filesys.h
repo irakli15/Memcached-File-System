@@ -3,6 +3,14 @@
 #include "directory.h"
 #include "list.h"
 
+// permissions
+#define RD      "r00"
+#define WR      "0w0"
+#define EX      "00x"
+#define RDWR    "rw0"
+#define RDWREX  "rwx"
+
+
 struct file_info {
     inode_t* inode;
     // struct list_elem elem;
@@ -36,5 +44,7 @@ int filesys_rmdir(const char* path);
 char* get_last_part(const char* path);
 
 dir_t* follow_path(const char* path, char** recv_file_name);
+
+int check_permission(inode_t* inode, char* perms);
 
 // int rename_file ();
