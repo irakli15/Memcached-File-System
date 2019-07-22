@@ -488,6 +488,13 @@ int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
 
 int fs_chown(const char* path, uid_t uid, gid_t gid, struct fuse_file_info *fi){
 	inode_t* inode = get_inode(path, fi);
+	if(S_ISLNK(inode->d_inode.mode)){
+		char sym_path[BLOCK_SIZE];
+		inode_read(inode, sym_path, 0, BLOCK_SIZE);
+		inode_t* temp_inode = get_inode(sym_path, NULL);
+		inode_close(inode);
+		inode = temp_inode;
+	}
 	if(inode == NULL)
 		return -1;
 	inode->d_inode.uid = uid;

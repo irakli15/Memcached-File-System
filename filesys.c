@@ -11,7 +11,7 @@
 void filesys_init(){
     init_connection();
     init_inode();
-    flush_all();
+    // flush_all();
    
     if(open_freemap_inode() < 0){
         flush_all();
