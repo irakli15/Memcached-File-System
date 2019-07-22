@@ -360,6 +360,8 @@ int fs_readlink (const char *path, char *buf, size_t size){
 int fs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags){
 	if(path == NULL || name == NULL || value == NULL)
 		return -1;
+	if(strcmp(path, "/") == 0)
+		return -1;
 	file_info_t *f_info = open_file(path);
 	if(f_info == NULL)
 		return -1;
