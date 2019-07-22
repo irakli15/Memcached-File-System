@@ -315,9 +315,14 @@ size_t ilen(inode_t* inode){
     return inode->d_inode.length;
 }
 
-void inode_chmod(inode_t* inode, int mode){
+int inode_chmod(inode_t* inode, int mode){
+    if (inode == NULL)
+        return -1;
     inode->d_inode.mode = mode;
-    update_block(inode->inumber, &inode->d_inode);
+    if (update_block(inode->inumber, &inode->d_inode) < 0)
+        return -1;
+    else 
+        return 0;
 }
 
 int increase_nlink(inode_t* inode){

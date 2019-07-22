@@ -131,7 +131,7 @@ static int fs_getattr(const char *path, struct stat *stbuf,
 		// printf("%d mine\n", dir_get_entry_mode(cur_dir, path+1) | 0755);
 		// printf("%d not mine\n", S_IFDIR | 0755);
 
-		stbuf->st_mode = mode | 0755;
+		stbuf->st_mode = mode;
 		stbuf->st_nlink = 1;
 		if(fh != NULL){
 			if(fh->type == 1)
@@ -432,6 +432,49 @@ int fs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi){
 }
 
 
+int fs_chmod(const char* path, mode_t mode, struct fuse_file_info *fi){
+	file_handle_t* fh = NULL;
+	if(fi != NULL)
+		fh = (file_handle_t*)fi->fh;
+
+	inode_t *inode;
+	if(fh == NULL){
+		int mode = getattr_path(path);
+		if (mode < 0)
+			return -1;
+		inumber_t inumber;
+
+		if(S_ISDIR(mode)){
+			char *file_name;
+			dir_t *dir = follow_path(path, &file_name);
+			dir_t* f_dir = dir_open(dir, file_name);
+			inumber = f_dir->inode->inumber;
+			dir_close(f_dir);
+			dir_close(dir);
+		}else{
+			file_info_t *fi = open_file(path);
+			if(fi == NULL)
+				return -1;
+			inumber = fi->inode->inumber;
+			close_file(fi);
+		}
+		inode = inode_open(inumber);
+
+	}
+	else{
+		if(fh->type == 1)
+			inode = ((dir_t*)fh->ptr)->inode;
+		else
+			inode = ((file_info_t*)fh->ptr)->inode;
+	}
+	int new_mode = mode;
+	int status = inode_chmod(inode, new_mode);
+	if(fi == NULL)
+		inode_close(inode);
+	else
+		fi->flags = new_mode;
+	return 0;
+}
 
 
 static struct fuse_operations fs_oper = {
@@ -455,6 +498,7 @@ static struct fuse_operations fs_oper = {
 	.readlink	= fs_readlink,
 	.fsync		= fs_fsync,
 	.flush		= fs_flush,
+	.chmod		= fs_chmod,
 	#ifdef HAVE_SETXATTR
     .setxattr    = fs_setxattr,
     .getxattr    = fs_getxattr,

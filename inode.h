@@ -72,7 +72,7 @@ size_t ilen(inode_t* inode);
 size_t bytes_to_nblock(size_t bytes);
 block_t bytes_to_index(size_t bytes);
 inumber_t block_to_inumber(inumber_t inumber, block_t block);
-void inode_chmod(inode_t* inode, int mode);
+int inode_chmod(inode_t* inode, int mode);
 
 
 int increase_nlink(inode_t* inode);

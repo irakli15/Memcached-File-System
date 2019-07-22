@@ -27,7 +27,6 @@ int get_file_size(const char* path);
 
 
 
-int filesys_chmod(const char* path);
 int filesys_chdir(const char* path);
 
 int filesys_mkdir(const char* path);
