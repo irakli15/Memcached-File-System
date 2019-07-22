@@ -423,6 +423,14 @@ int fs_removexattr(const char *path, const char *name){
 	return status;	
 }
 
+int fs_flush(const char* path, struct fuse_file_info* fi){
+	return 0;
+}
+
+int fs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi){
+	return 0;
+}
+
 
 
 
@@ -446,6 +454,8 @@ static struct fuse_operations fs_oper = {
 	.destroy	= fs_destroy,
 	.symlink	= fs_symlink,
 	.readlink	= fs_readlink,
+	.fsync		= fs_fsync,
+	.flush		= fs_flush,
 	#ifdef HAVE_SETXATTR
     .setxattr    = fs_setxattr,
     .getxattr    = fs_getxattr,
@@ -469,7 +479,8 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[])
 { 
-	
+	printf("%lu\n",sizeof(dir_entry_t));
+	return 0;
 	fuse_get_context();
     // filesys_mkdir("/hi");
     // filesys_mkdir("/hi/ho");

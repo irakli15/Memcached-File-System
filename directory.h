@@ -2,7 +2,7 @@
 #define _DIRECTORY_H
 
 #include "inode.h"
-#define NAME_MAX_LEN 200
+#define NAME_MAX_LEN 203
 
 struct dir{
     inode_t* inode;
