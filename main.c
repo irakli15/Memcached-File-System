@@ -39,6 +39,7 @@
 #include "filesys.h"
 
 #include <unistd.h>
+#include <sys/stat.h>
 
 
 // 0  for file, 1 for dir.
@@ -161,6 +162,11 @@ int fs_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 
 int fs_unlink(const char *path){
 	printf("delete: %s\n", path);
+
+	int mode = getattr_path(path);
+	if ((S_IWUSR & mode) == 0 ){
+		return -EACCES;
+	}
 	int status = delete_file(path);
 	printf("status %d\n", status);
 	return status;
@@ -208,15 +214,21 @@ static int fs_open(const char *path, struct fuse_file_info *fi)
 	file_info_t* f_info = open_file(path);
 	if (f_info == NULL)
 		return -ENOENT;
-	// if ((fi->flags & O_ACCMODE) != O_RDONLY)
-	// 	return -EACCES;
+
+	int mode = f_info->inode->d_inode.mode;
+	if ( (S_IRUSR & mode) == 0 && (S_IWUSR & mode) == 0 ){
+		close_file(f_info);
+		return -EACCES;
+	}
+
 	file_handle_t* fh = malloc(sizeof(file_handle_t));
 	fh->ptr = f_info;
 	fh->type = 0;
 	fi->fh = (uint64_t)fh;
-	fi->flags |= O_RDWR;
+	fi->flags = f_info->inode->d_inode.mode;
 	return 0;
 }
+
 int fs_release(const char *path, struct fuse_file_info *fi){
 	printf("close file\n");
 	file_handle_t* fh = (file_handle_t*)fi->fh;
@@ -230,6 +242,11 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	printf("read\n");
 	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
+
+	int mode = f_info->inode->d_inode.mode;
+	if ( (S_IRUSR & mode) == 0){
+		return -EACCES;
+	}
 	return read_file_at(f_info, buf, offset,size);
 }
 
@@ -240,6 +257,12 @@ static int fs_write(const char* path, const char *buf, size_t size, off_t offset
 	// printf("fi %d\n", fi->fh);
 	
 	file_info_t* f_info = ((file_handle_t*)fi->fh)->ptr;
+	int mode = f_info->inode->d_inode.mode;
+
+	if ((S_IWUSR & mode) == 0 ){
+		return -EACCES;
+	}
+
 	return write_file_at(f_info, (void*)buf, offset, size);
 }
 
@@ -259,6 +282,7 @@ static int fs_mkdir(const char *path, mode_t mode)
 
 static int fs_rmdir(const char *path){
 	printf("rmdir path: %s\n", path);
+	int mode = getattr_path(path);
 	return filesys_rmdir(path);
 }
 
